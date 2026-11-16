@@ -4,12 +4,13 @@ import { Feather } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useApp, Prefs } from '@/context/AppContext';
-import { CONTACTS, findCountry, SAMPLE_RATES } from '@/data/demo';
+import { CONTACTS } from '@/data/demo';
+import { BillingCountry, PricingDetails } from '@/components/Pricing';
 import { Avatar, Btn, CountryMark, DemoNote, EmptyState, F, Press, confirmAction, tap, useBottomPad } from '@/components/ui';
 
 const TITLES: Record<string, string> = {
   notifications: 'Notifications', blocked: 'Blocked numbers', contacts: 'Contacts', appearance: 'Appearance',
-  rates: 'Sample rates', billing: 'Billing', privacy: 'Privacy & data', support: 'Help & support', about: 'About this demo',
+  rates: 'Rates', billing: 'Billing', privacy: 'Privacy & data', support: 'Help & support', about: 'About this demo',
 };
 
 function Toggle({ k, label, hint }: { k: keyof Prefs; label: string; hint: string }) {
@@ -29,7 +30,7 @@ function Toggle({ k, label, hint }: { k: keyof Prefs; label: string; hint: strin
 
 export default function SettingsSection() {
   const c = useColors();
-  const { section = '' } = useLocalSearchParams<{ section: string }>();
+  const { section = '', country } = useLocalSearchParams<{ section: string; country?: string }>();
   const { blocked, toggleBlocked, resetDemo, profile } = useApp();
   const bottom = useBottomPad(false);
   const card = [styles.card, { backgroundColor: c.card }];
@@ -72,24 +73,13 @@ export default function SettingsSection() {
           </Press>))}</View></>;
       break;
     case 'rates':
-      body = <><DemoNote text="Illustrative sample rates, not verified Twilio pricing." />
-        <View style={card}>
-          <View style={styles.line}><Text style={[styles.th, { color: c.mutedForeground, flex: 1 }]}>Destination</Text><Text style={[styles.th, { color: c.mutedForeground }]}>Call/min</Text><Text style={[styles.th, { color: c.mutedForeground }]}>SMS</Text></View>
-          {SAMPLE_RATES.map((r) => { const ct = findCountry(r.code)!; return (
-            <View key={r.code} style={styles.line}>
-              <CountryMark country={ct} size={26} />
-              <Text style={{ flex: 1, fontFamily: F.m, color: c.foreground, fontSize: 14 }}>{ct.name}</Text>
-              <Text style={[styles.td, { color: c.foreground }]}>£{r.call.toFixed(2)}</Text>
-              <Text style={[styles.td, { color: c.foreground }]}>£{r.sms.toFixed(2)}</Text>
-            </View>); })}
-        </View></>;
+      body = <PricingDetails initialCountry={country} />;
       break;
     case 'billing':
-      body = <View style={card}>{P('No payment methods are stored and no charges have been made. Billing will become available after the Twilio-backed service and a payment provider are connected.')}
-        <View style={{ height: 10 }} /><Btn label="View top-up options" kind="ghost" testID="billing-topup" onPress={() => router.push('/topup')} /></View>;
+      body = <BillingCountry />;
       break;
     case 'privacy':
-      body = <><View style={card}>{P(`Everything in this demo, including your profile (${profile.email}), drafts, shortlists and preferences, is stored only on this device. Nothing is uploaded.`)}</View>
+      body = <><View style={card}>{P(`Your profile (${profile.email}), drafts, shortlists and preferences are stored on this device. Number searches and destination/billing country codes are sent to our server to retrieve availability and prices.`)}</View>
         <Btn label="Reset demo data" kind="danger" icon="rotate-ccw" testID="privacy-reset" onPress={() => confirmAction('Reset demo data?', 'Profile, saved messages and preferences return to defaults.', 'Reset', () => { tap('medium'); resetDemo(); router.back(); })} /></>;
       break;
     case 'support':

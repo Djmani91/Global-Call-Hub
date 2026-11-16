@@ -5,12 +5,17 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import {
   getGetTwilioAvailableNumbersQueryKey,
   useGetTwilioAvailableNumbers,
+  getGetTwilioPricingQueryKey,
+  useGetTwilioPricing,
 } from '@workspace/api-client-react';
 import type { TwilioCountryCode, TwilioPhoneNumberType } from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { findCountry } from '@/data/demo';
 import { Btn, CountryMark, DemoNote, EmptyState, F, Press, SearchBar, useBottomPad } from '@/components/ui';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
+import { useApp } from '@/context/AppContext';
+import { PricingSummary } from '@/components/Pricing';
+import { CURRENCIES } from '@/utils/currency';
 
 const NUMBER_TYPES: { value: TwilioPhoneNumberType; label: string }[] = [
   { value: 'local', label: 'Local' },
@@ -20,6 +25,7 @@ const NUMBER_TYPES: { value: TwilioPhoneNumberType; label: string }[] = [
 
 export default function CountryNumbers() {
   const c = useColors();
+  const { profile, ready } = useApp();
   const { country } = useLocalSearchParams<{ country: string }>();
   const [phoneNumberType, setPhoneNumberType] = useState<TwilioPhoneNumberType>('local');
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,6 +63,14 @@ export default function CountryNumbers() {
       },
     },
   );
+  const pricingParams = { countryCode: (ct?.code ?? 'US') as TwilioCountryCode,
+    billingCountry: profile.billingCountry as TwilioCountryCode };
+  const pricingQuery = useGetTwilioPricing(pricingParams, { query: {
+    queryKey: getGetTwilioPricingQueryKey(pricingParams), enabled: Boolean(ct) && ready,
+    staleTime: 60_000, retry: false,
+  } });
+  const pricing = !pricingQuery.isError ? pricingQuery.data : undefined;
+  const pricingError = pricing?.sections.find(s => s.kind === 'numbers')?.error;
 
   if (!ct) {
     return (
@@ -110,7 +124,7 @@ export default function CountryNumbers() {
         <Press
           testID="refresh-live-numbers"
           accessibilityLabel="Refresh number availability"
-          onPress={() => { setSelectedNumber(null); numbersQuery.refetch(); }}
+          onPress={() => { setSelectedNumber(null); numbersQuery.refetch(); pricingQuery.refetch(); }}
           style={{ padding: 4, marginLeft: 'auto' }}
         >
           <Feather name="refresh-cw" size={17} color={c.primary} />
@@ -147,7 +161,14 @@ export default function CountryNumbers() {
         })}
       </View>
 
-      <DemoNote text="These are live search results, not a reservation. Availability can change. Twilio returns capabilities here, but not the final rental or usage price." icon="radio" />
+      <DemoNote text="Live inventory, not a reservation. Standard country/type rental prices include Linea's 3× rate and billing-currency conversion, excluding taxes and extra fees. Purchases are disabled." icon="radio" />
+      <Text style={{ fontFamily: F.m, color: c.primary, fontSize: 13 }}>Display currency: {CURRENCIES[profile.billingCountry]}</Text>
+      {pricingError || pricingQuery.isError ? <Text testID="number-pricing-error"
+        style={{ fontFamily: F.r, color: c.destructive, fontSize: 13, lineHeight: 19 }}>
+        {pricingError ?? 'Unable to load rental pricing. Please retry.'}
+      </Text> : null}
+      <Btn label="Rental, call & SMS rates" testID="numbers-view-rates" kind="ghost"
+        onPress={() => router.push({ pathname: '/settings/[section]', params: { section: 'rates', country: ct.code } })} />
 
       {searchTerm.length >= 2 ? (
         <Text style={{ fontFamily: F.m, color: c.mutedForeground, fontSize: 13 }}>
@@ -220,6 +241,10 @@ export default function CountryNumbers() {
                   <Text style={{ fontFamily: F.r, fontSize: 13, color: c.mutedForeground }}>
                     {location || ct.name} · {services || 'No voice or messaging capability listed'}
                   </Text>
+                  {pricing ? <PricingSummary pricing={pricing} numberType={phoneNumberType} /> :
+                    <Text style={{ fontFamily: F.r, fontSize: 13, color: c.mutedForeground }}>
+                      {pricingQuery.isLoading || !ready ? 'Loading monthly price…' : 'Monthly price unavailable'}
+                    </Text>}
                 </View>
                 <Feather
                   name={isSelected ? 'check-circle' : 'circle'}

@@ -1,17 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useApp } from '@/context/AppContext';
 import { findCountry, findSample } from '@/data/demo';
-import { Btn, CountryMark, EmptyState, F, tap, useBottomPad } from '@/components/ui';
+import { Btn, CountryMark, DemoNote, EmptyState, F, useBottomPad } from '@/components/ui';
 
 export default function NumberDetail() {
   const c = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { reserved, toggleShortlist } = useApp();
-  const [blockedShown, setBlockedShown] = useState(false);
   const bottom = useBottomPad(false);
   const n = findSample(id);
   const ct = findCountry(n?.country);
@@ -19,7 +17,7 @@ export default function NumberDetail() {
   const saved = reserved.includes(n.id);
   const rows: [string, string][] = [
     ['Country', `${ct.name} (${ct.dial})`], ['Type', ct.kind], ['Capabilities', n.sms ? 'Voice and SMS' : 'Voice only'],
-    ['Monthly (sample)', `£${n.monthly.toFixed(2)}`], ['Requirements', ct.note],
+    ['Monthly', 'See live country rates; sample not priced'], ['Requirements', ct.note],
   ];
   return (
     <ScrollView style={{ backgroundColor: c.background }} contentContainerStyle={{ padding: 18, paddingBottom: bottom, gap: 12 }}>
@@ -36,16 +34,10 @@ export default function NumberDetail() {
           </View>
         ))}
       </View>
-      {blockedShown ? (
-        <View testID="number-purchase-blocked" style={[styles.blocked, { backgroundColor: '#3A2024', borderColor: c.destructive }]}>
-          <Feather name="lock" size={18} color={c.destructive} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={{ fontFamily: F.s, color: c.foreground, fontSize: 15 }}>Purchasing is disabled in this demo</Text>
-            <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 13, lineHeight: 19 }}>Live number purchases need a connected Twilio account. No order was placed and nothing was charged.</Text>
-          </View>
-        </View>
-      ) : null}
-      <Btn label="Buy this number" icon="lock" testID="number-buy" onPress={() => { tap('medium'); setBlockedShown(true); }} />
+      <DemoNote text="This is a saved sample, not an available number or priced offer. No number has been ordered or charged." />
+      <Btn label="Purchases unavailable" icon="lock" testID="number-buy" disabled onPress={() => {}} />
+      <Btn label="View live country rates" testID="sample-number-rates" kind="ghost"
+        onPress={() => router.push({ pathname: '/settings/[section]', params: { section: 'rates', country: ct.code } })} />
       <Btn label={saved ? 'Remove from shortlist' : 'Save to shortlist'} icon="bookmark" kind="ghost" testID="number-shortlist" onPress={() => toggleShortlist(n.id)} />
       <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12, textAlign: 'center', lineHeight: 18 }}>Availability and regulatory requirements are subject to Twilio.</Text>
     </ScrollView>

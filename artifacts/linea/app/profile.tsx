@@ -35,7 +35,7 @@ export default function Profile() {
         ))}
       </View>
       <View style={{ height: 8 }} />
-      <Btn label="Save profile" testID="profile-save" disabled={!valid} onPress={() => { tap('medium'); setProfile({ name: name.trim(), email: email.trim(), homeCountry: home }); router.back(); }} />
+      <Btn label="Save profile" testID="profile-save" disabled={!valid} onPress={() => { tap('medium'); setProfile({ ...profile, name: name.trim(), email: email.trim(), homeCountry: home }); router.back(); }} />
       <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12, textAlign: 'center' }}>Saved on this device only. No account is created.</Text>
     </KeyboardAwareScrollViewCompat>
   );

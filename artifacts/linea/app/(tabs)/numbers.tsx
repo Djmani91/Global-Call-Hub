@@ -20,7 +20,7 @@ export default function Numbers() {
         <Section label="Your numbers" />
         <View style={[styles.empty, { borderColor: c.border }]}>
           <Feather name="smartphone" size={22} color={c.mutedForeground} />
-          <Text style={{ flex: 1, fontFamily: F.r, color: c.mutedForeground, fontSize: 14 }}>No number assigned yet. Live numbers become available once Twilio is connected.</Text>
+          <Text style={{ flex: 1, fontFamily: F.r, color: c.mutedForeground, fontSize: 14 }}>No number assigned yet. Browse live Twilio inventory by country. Purchases are disabled in this preview.</Text>
         </View>
         <Section label={`Shortlist${saved.length ? ` (${saved.length})` : ''}`} />
         {saved.length === 0 ? (
@@ -32,14 +32,14 @@ export default function Numbers() {
               <CountryMark country={ct} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: F.s, fontSize: 16, color: c.foreground }}>{n.display}</Text>
-                <Text style={{ fontFamily: F.r, fontSize: 13, color: c.mutedForeground }}>{ct.name} · sample £{n.monthly.toFixed(2)}/mo</Text>
+                <Text style={{ fontFamily: F.r, fontSize: 13, color: c.mutedForeground }}>{ct.name} · saved sample, not a priced offer</Text>
               </View>
               <IconButton name="x" label="Remove from shortlist" testID={`shortlist-remove-${n.id}`} color={c.mutedForeground} size={18} onPress={() => toggleShortlist(n.id)} />
             </Press>
           );
         })}
         <View style={{ padding: 18 }}>
-          <DemoNote text="Numbers shown in Linea are illustrative samples, not live inventory. Availability and regulatory requirements are subject to Twilio and each country's rules." />
+          <DemoNote text="Browse countries for live inventory and country/type rental prices. Your old shortlist contains samples only. Availability and document requirements vary by country." />
         </View>
       </ScrollView>
     </View>

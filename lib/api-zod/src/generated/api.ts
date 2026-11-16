@@ -9,6 +9,38 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Read marked-up country prices in the customer's billing currency
+ */
+export const GetTwilioPricingQueryParams = zod.object({
+  "countryCode": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US']),
+  "billingCountry": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US'])
+})
+
+export const GetTwilioPricingResponse = zod.object({
+  "countryCode": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US']),
+  "billingCountry": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US']),
+  "currency": zod.string(),
+  "multiplier": zod.number(),
+  "fetchedAt": zod.string(),
+  "sections": zod.array(zod.object({
+  "kind": zod.enum(['numbers', 'voice', 'sms']),
+  "error": zod.string().nullable(),
+  "sourceCurrency": zod.string().nullable(),
+  "exchangeRate": zod.number().nullable(),
+  "exchangeDate": zod.string().nullable(),
+  "rates": zod.array(zod.object({
+  "label": zod.string(),
+  "direction": zod.enum(['rental', 'incoming', 'outgoing']),
+  "numberType": zod.string(),
+  "amount": zod.number(),
+  "unit": zod.enum(['month', 'minute', 'segment']),
+  "prefixes": zod.array(zod.string())
+}))
+}))
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

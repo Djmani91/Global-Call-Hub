@@ -1,1 +1,1 @@
-- [Telephony product scope](telephony-product.md) — Screenshot-inspired calling app; Twilio credentials will be supplied later.
+- [Telephony product scope](telephony-product.md) — Twilio calling app; 3× retail pricing and billing-country display currencies.

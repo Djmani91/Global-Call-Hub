@@ -7,8 +7,15 @@
  */
 
 export * from './apiError';
+export * from './countryPricing';
+export * from './customerRate';
+export * from './customerRateDirection';
+export * from './customerRateUnit';
 export * from './getTwilioAvailableNumbersParams';
+export * from './getTwilioPricingParams';
 export * from './healthStatus';
+export * from './pricingSection';
+export * from './pricingSectionKind';
 export * from './twilioAvailableNumbersResponse';
 export * from './twilioAvailablePhoneNumber';
 export * from './twilioAvailablePhoneNumberCapabilities';

@@ -3,12 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setHapticsEnabled } from '@/components/ui';
 import { CallEntry, DEMO_CALLS, DEMO_THREADS, Thread } from '@/data/demo';
 
-export type Profile = { name: string; email: string; homeCountry: string };
+export type Profile = { name: string; email: string; homeCountry: string; billingCountry: string };
 export type Prefs = { haptics: boolean; notifyMessages: boolean; notifyCalls: boolean; showSeconds: boolean; compact: boolean };
 type Store = { profile: Profile; prefs: Prefs; threads: Thread[]; calls: CallEntry[]; blocked: string[]; reserved: string[] };
 
 const DEFAULT: Store = {
-  profile: { name: 'Sana Whitfield', email: 'sana@example.com', homeCountry: 'GB' },
+  profile: { name: 'Sana Whitfield', email: 'sana@example.com', homeCountry: 'GB', billingCountry: 'GB' },
   prefs: { haptics: true, notifyMessages: true, notifyCalls: true, showSeconds: false, compact: false },
   threads: DEMO_THREADS, calls: DEMO_CALLS, blocked: [], reserved: [],
 };
@@ -36,7 +36,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
-      .then((raw) => { if (raw) setStore({ ...DEFAULT, ...JSON.parse(raw) }); })
+      .then((raw) => {
+        if (raw) {
+          const saved = JSON.parse(raw);
+          setStore({ ...DEFAULT, ...saved, profile: { ...DEFAULT.profile, ...saved.profile } });
+        }
+      })
       .catch(() => {})
       .finally(() => setReady(true));
   }, []);

@@ -17,7 +17,9 @@ import type {
 
 import type {
   ApiError,
+  CountryPricing,
   GetTwilioAvailableNumbersParams,
+  GetTwilioPricingParams,
   HealthStatus,
   TwilioAvailableNumbersResponse
 } from './api.schemas';
@@ -48,6 +50,90 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetTwilioPricingUrl = (params: GetTwilioPricingParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/twilio/pricing?${stringifiedParams}` : `/api/twilio/pricing`
+}
+
+/**
+ * @summary Read marked-up country prices in the customer's billing currency
+ */
+export const getTwilioPricing = async (params: GetTwilioPricingParams, options?: Parameters<typeof customFetch>[1]): Promise<CountryPricing> => {
+
+  return customFetch<CountryPricing>(getGetTwilioPricingUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTwilioPricingQueryKey = (params?: GetTwilioPricingParams,) => {
+    return [
+    `/api/twilio/pricing`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTwilioPricingQueryOptions = <TData = Awaited<ReturnType<typeof getTwilioPricing>>, TError = ErrorType<ApiError>>(params: GetTwilioPricingParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTwilioPricing>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTwilioPricingQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTwilioPricing>>> = ({ signal }) => getTwilioPricing(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTwilioPricing>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTwilioPricingQueryResult = NonNullable<Awaited<ReturnType<typeof getTwilioPricing>>>
+export type GetTwilioPricingQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Read marked-up country prices in the customer's billing currency
+ */
+
+export function useGetTwilioPricing<TData = Awaited<ReturnType<typeof getTwilioPricing>>, TError = ErrorType<ApiError>>(
+ params: GetTwilioPricingParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTwilioPricing>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTwilioPricingQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getHealthCheckUrl = () => {
 

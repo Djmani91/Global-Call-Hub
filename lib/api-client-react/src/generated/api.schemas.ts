@@ -5,10 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
-
 export type TwilioCountryCode = typeof TwilioCountryCode[keyof typeof TwilioCountryCode];
 
 
@@ -24,6 +20,68 @@ export const TwilioCountryCode = {
   PR: 'PR',
   US: 'US',
 } as const;
+
+export type PricingSectionKind = typeof PricingSectionKind[keyof typeof PricingSectionKind];
+
+
+export const PricingSectionKind = {
+  numbers: 'numbers',
+  voice: 'voice',
+  sms: 'sms',
+} as const;
+
+export type CustomerRateDirection = typeof CustomerRateDirection[keyof typeof CustomerRateDirection];
+
+
+export const CustomerRateDirection = {
+  rental: 'rental',
+  incoming: 'incoming',
+  outgoing: 'outgoing',
+} as const;
+
+export type CustomerRateUnit = typeof CustomerRateUnit[keyof typeof CustomerRateUnit];
+
+
+export const CustomerRateUnit = {
+  month: 'month',
+  minute: 'minute',
+  segment: 'segment',
+} as const;
+
+export interface CustomerRate {
+  label: string;
+  direction: CustomerRateDirection;
+  numberType: string;
+  amount: number;
+  unit: CustomerRateUnit;
+  prefixes: string[];
+}
+
+export interface PricingSection {
+  kind: PricingSectionKind;
+  /** @nullable */
+  error: string | null;
+  /** @nullable */
+  sourceCurrency: string | null;
+  /** @nullable */
+  exchangeRate: number | null;
+  /** @nullable */
+  exchangeDate: string | null;
+  rates: CustomerRate[];
+}
+
+export interface CountryPricing {
+  countryCode: TwilioCountryCode;
+  billingCountry: TwilioCountryCode;
+  currency: string;
+  multiplier: number;
+  fetchedAt: string;
+  sections: PricingSection[];
+}
+
+export interface HealthStatus {
+  status: string;
+}
 
 export type TwilioPhoneNumberType = typeof TwilioPhoneNumberType[keyof typeof TwilioPhoneNumberType];
 
@@ -60,6 +118,11 @@ export interface TwilioAvailableNumbersResponse {
 export interface ApiError {
   error: string;
 }
+
+export type GetTwilioPricingParams = {
+countryCode: TwilioCountryCode;
+billingCountry: TwilioCountryCode;
+};
 
 export type GetTwilioAvailableNumbersParams = {
 countryCode: TwilioCountryCode;

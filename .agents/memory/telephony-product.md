@@ -14,3 +14,9 @@ The user wants outgoing and incoming calls inside the installed app on both Andr
 **Why:** The user explicitly selected installed mobile calling and both platforms.
 
 **How to apply:** Scope calling for both platforms, including native incoming-call delivery. Do not substitute browser calling or the system phone dialer without the user's agreement.
+
+Linea's retail rates are three times the current Twilio cost, including monthly numbers and incoming/outgoing voice and SMS. Display currency follows the customer's saved billing country, not the purchased number's country.
+
+**Why:** The user explicitly requested a 3× multiplier and selected “Customer billing country” when asked how currency should be chosen.
+
+**How to apply:** Keep the pricing policy server-side. Do not substitute sample prices when provider permissions or conversion data are unavailable. Credit packs are a separate product decision, not a Twilio rate.

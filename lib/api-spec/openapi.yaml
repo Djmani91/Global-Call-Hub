@@ -13,6 +13,35 @@ tags:
   - name: twilio
     description: Read-only Twilio phone number inventory
 paths:
+  /twilio/pricing:
+    get:
+      operationId: getTwilioPricing
+      tags: [twilio]
+      summary: Read marked-up country prices in the customer's billing currency
+      parameters:
+        - name: countryCode
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/TwilioCountryCode"
+        - name: billingCountry
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/TwilioCountryCode"
+      responses:
+        "200":
+          description: Independent pricing sections; unavailable sections contain a clear error and no rates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CountryPricing"
+        "400":
+          description: Invalid country
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /healthz:
     get:
       operationId: healthCheck
@@ -79,6 +108,63 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 components:
   schemas:
+    CountryPricing:
+      type: object
+      required: [countryCode, billingCountry, currency, multiplier, fetchedAt, sections]
+      properties:
+        countryCode:
+          $ref: "#/components/schemas/TwilioCountryCode"
+        billingCountry:
+          $ref: "#/components/schemas/TwilioCountryCode"
+        currency:
+          type: string
+        multiplier:
+          type: number
+        fetchedAt:
+          type: string
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/PricingSection"
+    PricingSection:
+      type: object
+      required: [kind, error, sourceCurrency, exchangeRate, exchangeDate, rates]
+      properties:
+        kind:
+          type: string
+          enum: [numbers, voice, sms]
+        error:
+          type: [string, "null"]
+        sourceCurrency:
+          type: [string, "null"]
+        exchangeRate:
+          type: [number, "null"]
+        exchangeDate:
+          type: [string, "null"]
+        rates:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerRate"
+    CustomerRate:
+      type: object
+      required: [label, direction, numberType, amount, unit, prefixes]
+      properties:
+        label:
+          type: string
+        direction:
+          type: string
+          enum: [rental, incoming, outgoing]
+        numberType:
+          type: string
+        amount:
+          type: number
+        unit:
+          type: string
+          enum: [month, minute, segment]
+        prefixes:
+          type: array
+          items:
+            type: string
     HealthStatus:
       type: object
       properties:
