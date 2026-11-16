@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import {
@@ -9,7 +9,8 @@ import {
 import type { TwilioCountryCode, TwilioPhoneNumberType } from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { findCountry } from '@/data/demo';
-import { Btn, CountryMark, DemoNote, EmptyState, F, Press, useBottomPad } from '@/components/ui';
+import { Btn, CountryMark, DemoNote, EmptyState, F, Press, SearchBar, useBottomPad } from '@/components/ui';
+import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 
 const NUMBER_TYPES: { value: TwilioPhoneNumberType; label: string }[] = [
   { value: 'local', label: 'Local' },
@@ -21,21 +22,36 @@ export default function CountryNumbers() {
   const c = useColors();
   const { country } = useLocalSearchParams<{ country: string }>();
   const [phoneNumberType, setPhoneNumberType] = useState<TwilioPhoneNumberType>('local');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
   const ct = findCountry(country);
   const bottom = useBottomPad(false);
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(searchTerm), 350);
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+  const searchPending = searchTerm !== debouncedSearch;
+  const needsMoreDigits = searchTerm.length === 1;
+  const requestSearch = debouncedSearch.length >= 2 ? debouncedSearch : undefined;
+  const usesAreaCodeFilter = Boolean(
+    ct && (ct.code === 'US' || ct.code === 'CA') &&
+    phoneNumberType !== 'toll-free' && requestSearch?.length === 3,
+  );
   const numbersQuery = useGetTwilioAvailableNumbers(
     {
       countryCode: (ct?.code ?? 'US') as TwilioCountryCode,
       phoneNumberType,
+      search: requestSearch,
     },
     {
       query: {
         queryKey: getGetTwilioAvailableNumbersQueryKey({
           countryCode: (ct?.code ?? 'US') as TwilioCountryCode,
           phoneNumberType,
+          search: requestSearch,
         }),
-        enabled: Boolean(ct),
+        enabled: Boolean(ct) && !searchPending && !needsMoreDigits,
         staleTime: 30_000,
         retry: 1,
       },
@@ -56,9 +72,11 @@ export default function CountryNumbers() {
   const missingPermission = errorMessage.includes('permission to search available phone numbers');
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollViewCompat
       style={{ backgroundColor: c.background }}
       contentContainerStyle={{ padding: 18, paddingBottom: bottom, gap: 12 }}
+      bottomOffset={20}
+      keyboardShouldPersistTaps="handled"
     >
       <Stack.Screen options={{ title: ct.name }} />
       <View style={styles.head}>
@@ -72,6 +90,17 @@ export default function CountryNumbers() {
           </Text>
         </View>
       </View>
+
+      <SearchBar
+        value={searchTerm}
+        onChange={(value) => {
+          setSelectedNumber(null);
+          setSearchTerm(value.replace(/\D/g, '').slice(0, 16));
+        }}
+        testID="available-number-search"
+        placeholder="Search by area code or digits"
+        keyboardType="number-pad"
+      />
 
       <View style={[styles.liveBadge, { backgroundColor: c.card, borderColor: c.border }]}>
         <View style={[styles.liveDot, { backgroundColor: c.primary }]} />
@@ -120,7 +149,17 @@ export default function CountryNumbers() {
 
       <DemoNote text="These are live search results, not a reservation. Availability can change. Twilio returns capabilities here, but not the final rental or usage price." icon="radio" />
 
-      {numbersQuery.isLoading ? (
+      {searchTerm.length >= 2 ? (
+        <Text style={{ fontFamily: F.m, color: c.mutedForeground, fontSize: 13 }}>
+          {usesAreaCodeFilter
+            ? `Area code ${requestSearch} · matched by Twilio`
+            : `Matching digits ${requestSearch} in available numbers`}
+        </Text>
+      ) : null}
+
+      {needsMoreDigits ? (
+        <EmptyState icon="search" title="Add one more digit" body="Enter at least two digits to search Twilio's available numbers." />
+      ) : searchPending || numbersQuery.isLoading ? (
         <View style={styles.state}>
           <ActivityIndicator size="small" color={c.primary} />
           <Text style={{ fontFamily: F.m, color: c.mutedForeground, fontSize: 14 }}>
@@ -149,7 +188,7 @@ export default function CountryNumbers() {
       ) : numbersQuery.data?.numbers.length ? (
         <>
           <Text style={{ fontFamily: F.m, color: c.mutedForeground, fontSize: 13 }}>
-            {numbersQuery.data.numbers.length} number{numbersQuery.data.numbers.length === 1 ? '' : 's'} returned · updated {new Date(numbersQuery.data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {numbersQuery.data.numbers.length === 20 ? 'Showing up to 20' : numbersQuery.data.numbers.length} number{numbersQuery.data.numbers.length === 1 ? '' : 's'} returned · updated {new Date(numbersQuery.data.fetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
           {numbersQuery.data.numbers.map((number) => {
             const isSelected = selectedNumber === number.phoneNumber;
@@ -215,14 +254,16 @@ export default function CountryNumbers() {
         <EmptyState
           icon="phone"
           title="No numbers returned"
-          body={`Twilio did not return ${phoneNumberType} numbers for ${ct.name} in this search. Try another number type or country.`}
+          body={requestSearch
+            ? `Twilio found no ${phoneNumberType} numbers matching ${requestSearch} in ${ct.name}. Try different digits or another number type.`
+            : `Twilio did not return ${phoneNumberType} numbers for ${ct.name} in this search. Try another number type or country.`}
         />
       )}
 
       <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12, lineHeight: 18, textAlign: 'center', paddingTop: 4 }}>
         Number availability and required documents vary by country. No purchase or charge is made in this preview.
       </Text>
-    </ScrollView>
+    </KeyboardAwareScrollViewCompat>
   );
 }
 

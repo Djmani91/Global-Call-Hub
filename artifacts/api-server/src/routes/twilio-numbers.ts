@@ -25,8 +25,8 @@ router.get("/twilio/available-numbers", async (req, res): Promise<void> => {
     return;
   }
 
-  const { countryCode, phoneNumberType } = parsed.data;
-  const cacheKey = `${countryCode}:${phoneNumberType}`;
+  const { countryCode, phoneNumberType, search } = parsed.data;
+  const cacheKey = `${countryCode}:${phoneNumberType}:${search ?? ""}`;
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     res.json(cached.response);
@@ -47,6 +47,18 @@ router.get("/twilio/available-numbers", async (req, res): Promise<void> => {
     `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/AvailablePhoneNumbers/${countryCode}/${resource}.json`,
   );
   url.searchParams.set("PageSize", "20");
+  if (search) {
+    const isNorthAmericanAreaCode =
+      (countryCode === "US" || countryCode === "CA") &&
+      phoneNumberType !== "toll-free" &&
+      search.length === 3;
+
+    if (isNorthAmericanAreaCode) {
+      url.searchParams.set("AreaCode", search);
+    } else {
+      url.searchParams.set("Contains", `%${search}%`);
+    }
+  }
 
   try {
     const upstream = await fetch(url, {
@@ -108,6 +120,10 @@ router.get("/twilio/available-numbers", async (req, res): Promise<void> => {
       }),
     });
 
+    if (cache.size >= 100) {
+      const oldestKey = cache.keys().next().value;
+      if (oldestKey) cache.delete(oldestKey);
+    }
     cache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, response });
     res.json(response);
   } catch (error) {

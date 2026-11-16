@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Alert, Animated, Platform, Pressable, PressableProps, StyleSheet, Text, TextInput, View, ViewStyle, StyleProp } from 'react-native';
+import { Alert, Animated, Platform, Pressable, PressableProps, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle, StyleProp } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -73,7 +73,7 @@ export function IconButton({ name, onPress, testID, color, label, size = 26 }: {
   );
 }
 
-export function SearchBar({ value, onChange, placeholder = 'Search', testID, right }: { value: string; onChange: (t: string) => void; placeholder?: string; testID: string; right?: React.ReactNode }) {
+export function SearchBar({ value, onChange, placeholder = 'Search', testID, right, keyboardType }: { value: string; onChange: (t: string) => void; placeholder?: string; testID: string; right?: React.ReactNode; keyboardType?: TextInputProps['keyboardType'] }) {
   const c = useColors();
   return (
     <View style={s.searchRow}>
@@ -85,6 +85,7 @@ export function SearchBar({ value, onChange, placeholder = 'Search', testID, rig
           onChangeText={onChange}
           placeholder={placeholder}
           placeholderTextColor={c.mutedForeground}
+          keyboardType={keyboardType}
           style={[s.searchInput, { color: c.foreground }]}
           returnKeyType="search"
           autoCorrect={false}

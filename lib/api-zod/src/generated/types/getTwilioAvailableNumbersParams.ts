@@ -11,4 +11,11 @@ import type { TwilioPhoneNumberType } from './twilioPhoneNumberType';
 export type GetTwilioAvailableNumbersParams = {
 countryCode: TwilioCountryCode;
 phoneNumberType: TwilioPhoneNumberType;
+/**
+ * Digits to match; a three-digit US or Canada area code uses Twilio's area-code filter.
+ * @minLength 2
+ * @maxLength 16
+ * @pattern ^[0-9]{2,16}$
+ */
+search?: string;
 };

@@ -21,9 +21,17 @@ export const HealthCheckResponse = zod.object({
  * Searches Twilio inventory for a supported country. This endpoint never purchases a number.
  * @summary Search live available phone numbers
  */
+export const getTwilioAvailableNumbersQuerySearchMin = 2;
+export const getTwilioAvailableNumbersQuerySearchMax = 16;
+
+
+export const getTwilioAvailableNumbersQuerySearchRegExp = new RegExp('^[0-9]{2,16}$');
+
+
 export const GetTwilioAvailableNumbersQueryParams = zod.object({
   "countryCode": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US']),
-  "phoneNumberType": zod.enum(['local', 'mobile', 'toll-free'])
+  "phoneNumberType": zod.enum(['local', 'mobile', 'toll-free']),
+  "search": zod.coerce.string().min(getTwilioAvailableNumbersQuerySearchMin).max(getTwilioAvailableNumbersQuerySearchMax).regex(getTwilioAvailableNumbersQuerySearchRegExp).optional().describe('Digits to match; a three-digit US or Canada area code uses Twilio\'s area-code filter.')
 })
 
 export const GetTwilioAvailableNumbersResponse = zod.object({
