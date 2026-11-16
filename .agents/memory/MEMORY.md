@@ -1,0 +1,1 @@
+- [Telephony product scope](telephony-product.md) — Screenshot-inspired calling app; Twilio credentials will be supplied later.

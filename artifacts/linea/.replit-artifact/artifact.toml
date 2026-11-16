@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/"
+title = "Linea — Calls & Messages"
+description = "A mobile calling and messaging app inspired by the supplied dark-and-green reference screens. Explore calls, SMS conversations, international numbers, credit and settings in a clearly labelled demo until Twilio is connected."
+version = "1.0.0"
+id = "artifacts/linea"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/" ]
+localPort = 22137
+
+[services.development]
+run = "pnpm --filter @workspace/linea run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/linea", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/linea", "run", "serve" ]
+
+[services.env]
+PORT = "22137"
+BASE_PATH = "/"
