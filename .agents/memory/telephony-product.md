@@ -32,3 +32,9 @@ The requested credit-pack amounts are 5, 10 and 15. The user did not specify a c
 **Why:** The user explicitly supplied these three amounts for Android credit purchases.
 
 **How to apply:** Use these pack sizes rather than inventing other denominations. Resolve the base currency before creating immutable priced products.
+
+Build the Android in-app purchase integration now, but the user will configure Google Play Console later, after uploading the app.
+
+**Why:** The user explicitly deferred Google Console setup until after app upload.
+
+**How to apply:** Do not require Google Play Console setup before implementing independently feasible app and server integration. Keep unavailable store products and checkout explicitly disabled; distinguish preview testing from real Google Play purchase verification.
