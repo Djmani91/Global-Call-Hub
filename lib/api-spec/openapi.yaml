@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: twilio
+    description: Read-only Twilio phone number inventory
 paths:
   /healthz:
     get:
@@ -24,6 +26,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /twilio/available-numbers:
+    get:
+      operationId: getTwilioAvailableNumbers
+      tags: [twilio]
+      summary: Search live available phone numbers
+      description: Searches Twilio inventory for a supported country. This endpoint never purchases a number.
+      parameters:
+        - name: countryCode
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/TwilioCountryCode"
+        - name: phoneNumberType
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/TwilioPhoneNumberType"
+      responses:
+        "200":
+          description: Live available phone numbers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwilioAvailableNumbersResponse"
+        "400":
+          description: Unsupported country or number type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: Twilio key is missing search permission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Twilio credentials or service are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +77,53 @@ components:
           type: string
       required:
         - status
+    TwilioCountryCode:
+      type: string
+      enum: [GB, AU, AT, CA, FI, FR, IL, MX, PR, US]
+    TwilioPhoneNumberType:
+      type: string
+      enum: [local, mobile, toll-free]
+    TwilioAvailablePhoneNumber:
+      type: object
+      properties:
+        phoneNumber:
+          type: string
+        friendlyName:
+          type: string
+        locality:
+          type: [string, "null"]
+        region:
+          type: [string, "null"]
+        capabilities:
+          type: object
+          properties:
+            voice:
+              type: boolean
+            sms:
+              type: boolean
+            mms:
+              type: boolean
+          required: [voice, sms, mms]
+      required: [phoneNumber, friendlyName, capabilities]
+    TwilioAvailableNumbersResponse:
+      type: object
+      properties:
+        countryCode:
+          $ref: "#/components/schemas/TwilioCountryCode"
+        phoneNumberType:
+          $ref: "#/components/schemas/TwilioPhoneNumberType"
+        fetchedAt:
+          type: string
+          format: date-time
+        numbers:
+          type: array
+          items:
+            $ref: "#/components/schemas/TwilioAvailablePhoneNumber"
+      required: [countryCode, phoneNumberType, fetchedAt, numbers]
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
 

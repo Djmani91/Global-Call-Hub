@@ -12,8 +12,12 @@ import { Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppProvider } from '@/context/AppContext';
 import colors from '@/constants/colors';
+import { setBaseUrl } from '@workspace/api-client-react';
 
 SplashScreen.preventAutoHideAsync();
+if (process.env.EXPO_PUBLIC_DOMAIN) {
+  setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+}
 const queryClient = new QueryClient();
 const c = colors.light;
 

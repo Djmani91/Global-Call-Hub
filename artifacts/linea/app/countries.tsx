@@ -19,7 +19,7 @@ export default function Countries() {
         keyExtractor={(x) => x.code}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: bottom }}
-        ListEmptyComponent={<EmptyState icon="globe" title="No country found" body="Linea's preview covers ten countries for now." />}
+        ListEmptyComponent={<EmptyState icon="globe" title="No country found" body="Search the countries supported by this preview." />}
         ListFooterComponent={<Text style={[styles.foot, { color: c.mutedForeground }]}>Availability and regulatory requirements are subject to Twilio and local regulators.</Text>}
         renderItem={({ item }) => (
           <Press testID={`country-${item.code}`} scale={0.985} onPress={() => router.push(`/numbers/${item.code}`)} style={[styles.row, { borderBottomColor: c.border }]}>
