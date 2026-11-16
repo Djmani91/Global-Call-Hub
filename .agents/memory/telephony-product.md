@@ -26,3 +26,9 @@ The user wants Google Play in-app purchases for Android billing first.
 **Why:** The user explicitly requested Android purchases through Google in-app billing.
 
 **How to apply:** Prioritize Android store billing, not a Google Pay wallet checkout. This Android-first billing scope does not change the separate requirement for calling on both Android and iPhone.
+
+The requested credit-pack amounts are 5, 10 and 15. The user did not specify a currency with those amounts.
+
+**Why:** The user explicitly supplied these three amounts for Android credit purchases.
+
+**How to apply:** Use these pack sizes rather than inventing other denominations. Resolve the base currency before creating immutable priced products.
