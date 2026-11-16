@@ -20,3 +20,9 @@ Linea's retail rates are three times the current Twilio cost, including monthly 
 **Why:** The user explicitly requested a 3× multiplier and selected “Customer billing country” when asked how currency should be chosen.
 
 **How to apply:** Keep the pricing policy server-side. Do not substitute sample prices when provider permissions or conversion data are unavailable. Credit packs are a separate product decision, not a Twilio rate.
+
+The user wants Google Play in-app purchases for Android billing first.
+
+**Why:** The user explicitly requested Android purchases through Google in-app billing.
+
+**How to apply:** Prioritize Android store billing, not a Google Pay wallet checkout. This Android-first billing scope does not change the separate requirement for calling on both Android and iPhone.
