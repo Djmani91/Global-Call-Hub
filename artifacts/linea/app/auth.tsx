@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -11,7 +12,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useAuth, useSignIn, useSignUp } from '@clerk/expo';
+import { useAuth, useClerk, useUser, useSignIn, useSignUp } from '@clerk/expo';
 import { getCountries, getCountryCallingCode, parsePhoneNumber } from 'libphonenumber-js';
 import {
   useCheckCustomerPhoneVerification,
@@ -20,7 +21,10 @@ import {
   useStartCustomerPhoneVerification,
   useGetCustomerAuthReadiness,
   setAuthTokenGetter,
+  useGetCustomerAuthMe,
+  getGetCustomerAuthMeQueryKey,
 } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useColors } from '@/hooks/useColors';
 import { useApp } from '@/context/AppContext';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
@@ -58,7 +62,10 @@ function safeError(error: unknown, fallback: string) {
   const value = error as {
     errors?: Array<{ longMessage?: string; message?: string }>;
     message?: string;
+    name?: string;
+    data?: { error?: string };
   };
+  if (value?.name === 'ApiError' && typeof value.data?.error === 'string') return value.data.error;
   const clerkMessage = value?.errors?.find((item) => item.longMessage || item.message);
   return clerkMessage?.longMessage ?? clerkMessage?.message ?? fallback;
 }
@@ -72,7 +79,10 @@ export default function CustomerAuth() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn, userId } = useAuth();
+  const clerk = useClerk();
+  const { user } = useUser();
+  const queryClient = useQueryClient();
   const { signIn } = useSignIn();
   const { signUp, fetchStatus: signUpFetchStatus } = useSignUp();
   const { setProfile, profile } = useApp();
@@ -96,6 +106,12 @@ export default function CustomerAuth() {
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [smsCooldown, setSmsCooldown] = useState(0);
+  const [emailCooldown, setEmailCooldown] = useState(0);
+  const account = useGetCustomerAuthMe({
+    query: { queryKey: [...getGetCustomerAuthMeQueryKey(), userId], enabled: !!isSignedIn, retry: false },
+  });
 
   const countries = useMemo<PhoneCountry[]>(() =>
     getCountries()
@@ -115,13 +131,21 @@ export default function CustomerAuth() {
       return null;
     }
   }, [countryCode, nationalNumber]);
-  const busy = startPhone.isPending || checkPhone.isPending ||
+  const busy = submitting || startPhone.isPending || checkPhone.isPending ||
     completeRegistration.isPending || signUpFetchStatus === 'fetching';
   const phoneReady = readiness.data?.phoneVerificationEnabled === true;
 
   useEffect(() => {
-    if (isSignedIn && step === 'phone') router.replace('/(tabs)');
-  }, [isSignedIn, step]);
+    if (isSignedIn && account.data?.customer) router.replace('/(tabs)');
+  }, [isSignedIn, account.data?.customer]);
+  useEffect(() => {
+    if (!smsCooldown && !emailCooldown) return;
+    const timer = setTimeout(() => {
+      setSmsCooldown(value => Math.max(0, value - 1));
+      setEmailCooldown(value => Math.max(0, value - 1));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [smsCooldown, emailCooldown]);
 
   async function beginPhoneVerification() {
     setError('');
@@ -134,6 +158,7 @@ export default function CustomerAuth() {
       setPhoneNumber(parsedPhone);
       setChallengeId(result.challengeId);
       setSmsCode('');
+      setSmsCooldown(60);
       setStep('sms');
     } catch (requestError) {
       setError(safeError(requestError, 'We could not send a code. Check the number and try again.'));
@@ -146,6 +171,7 @@ export default function CustomerAuth() {
       setError('Enter the code from your SMS.');
       return;
     }
+    setSubmitting(true);
     try {
       const result = await checkPhone.mutateAsync({ data: { challengeId, code: smsCode.trim() } });
       if (result.status === 'signed_in' && result.signInToken) {
@@ -154,16 +180,24 @@ export default function CustomerAuth() {
         if (signIn.status !== 'complete') {
           throw new Error('Phone sign-in did not complete.');
         }
-        await signIn.finalize({ navigate: () => undefined });
+        const finalized = await signIn.finalize({ navigate: () => undefined });
+        if (finalized.error) throw finalized.error;
+        await queryClient.invalidateQueries({ queryKey: getGetCustomerAuthMeQueryKey() });
         router.replace('/(tabs)');
         return;
       }
       if (!result.registrationToken) throw new Error('Phone verification could not continue.');
       setRegistrationToken(result.registrationToken);
-      setStep('email');
+      if (isSignedIn && user?.primaryEmailAddress?.verification.status === 'verified') {
+        setEmail(user.primaryEmailAddress.emailAddress);
+        setFullName([user.firstName, user.lastName].filter(Boolean).join(' '));
+        setStep('name');
+      } else {
+        setStep('email');
+      }
     } catch (requestError) {
       setError(safeError(requestError, 'That code did not work. Check it or request a new one.'));
-    }
+    } finally { setSubmitting(false); }
   }
 
   async function sendEmailCode() {
@@ -172,18 +206,43 @@ export default function CustomerAuth() {
       setError('Enter your email and a password with at least 8 characters.');
       return;
     }
+    setSubmitting(true);
     try {
       const { error: createError } = await signUp.password({
         emailAddress: email.trim(),
         password,
       });
-      if (createError) throw createError;
+      if (createError) {
+        // Existing identities must prove ownership; never merge by matching email.
+        const identifierExists = (createError as { errors?: Array<{ code?: string }> }).errors
+          ?.some(item => item.code === 'form_identifier_exists');
+        if (!identifierExists) throw createError;
+        const { error: loginError } = await signIn.password({ emailAddress: email.trim(), password });
+        if (loginError) throw loginError;
+        if (signIn.status !== 'complete') {
+          setError('This existing account needs additional sign-in verification before it can be linked.');
+          return;
+        }
+        const finalized = await signIn.finalize({ navigate: () => undefined });
+        if (finalized.error) throw finalized.error;
+        const existingUser = await clerk.user?.reload();
+        if (existingUser?.primaryEmailAddress?.verification.status !== 'verified') {
+          setError('Verify the existing account’s email before linking this phone.');
+          return;
+        }
+        setFullName([existingUser.firstName, existingUser.lastName].filter(Boolean).join(' '));
+        setPassword('');
+        setStep('name');
+        return;
+      }
       const { error: sendError } = await signUp.verifications.sendEmailCode();
       if (sendError) throw sendError;
+      setPassword('');
+      setEmailCooldown(60);
       setStep('email-code');
     } catch (requestError) {
       setError(safeError(requestError, 'We could not send the email code. Check your email and try again.'));
-    }
+    } finally { setSubmitting(false); }
   }
 
   async function verifyEmailCode() {
@@ -217,15 +276,22 @@ export default function CustomerAuth() {
       setStep('phone');
       return;
     }
+    setSubmitting(true);
     try {
-      const { error: updateError } = await signUp.update({ firstName, lastName });
-      if (updateError) throw updateError;
-      if (signUp.status !== 'complete') {
-        throw new Error('Your signup is missing a required detail.');
+      if (clerk.user) {
+        await clerk.user.update({ firstName, lastName });
+      } else {
+        const { error: updateError } = await signUp.update({ firstName, lastName });
+        if (updateError) throw updateError;
+        if (signUp.status !== 'complete') {
+          throw new Error('Your signup is missing a required detail.');
+        }
+        const finalized = await signUp.finalize({ navigate: () => undefined });
+        if (finalized.error) throw finalized.error;
       }
-      await signUp.finalize({ navigate: () => undefined });
-      setAuthTokenGetter(() => getToken());
+      if (Platform.OS !== 'web') setAuthTokenGetter(() => clerk.session?.getToken() ?? Promise.resolve(null));
       await completeRegistration.mutateAsync({ data: { registrationToken } });
+      await queryClient.invalidateQueries({ queryKey: getGetCustomerAuthMeQueryKey() });
       setProfile({
         ...profile,
         name: fullName.trim(),
@@ -234,7 +300,7 @@ export default function CustomerAuth() {
       router.replace('/(tabs)');
     } catch (requestError) {
       setError(safeError(requestError, 'Your account could not be completed. Please try again.'));
-    }
+    } finally { setSubmitting(false); }
   }
 
   async function changePhone() {
@@ -275,8 +341,14 @@ export default function CustomerAuth() {
         <View style={[styles.mark, { backgroundColor: colors.primary }]}>
           <Feather name="phone" size={24} color={colors.primaryForeground} />
         </View>
+        {step === 'phone' ? <Text style={[styles.helper, { color: colors.primary, marginBottom: 10 }]}>Calls, messages and extra phone numbers</Text> : null}
         <Text style={[styles.title, { color: colors.foreground }]}>{stageTitle}</Text>
         <Text style={[styles.body, { color: colors.mutedForeground }]}>{stageBody}</Text>
+        {isSignedIn && account.isError ? (
+          <Pressable onPress={() => void account.refetch()} style={styles.textAction}>
+            <Text style={{ color: colors.primary }}>Could not load your account. Tap to retry.</Text>
+          </Pressable>
+        ) : null}
 
         {step === 'phone' ? (
           <View style={styles.fieldGroup}>
@@ -340,20 +412,23 @@ export default function CustomerAuth() {
             />
             <Pressable
               testID="resend-phone-code"
-              disabled={busy}
+              disabled={busy || smsCooldown > 0}
               onPress={async () => {
                 setError('');
                 try {
                   const result = await startPhone.mutateAsync({ data: { phoneNumber } });
                   setChallengeId(result.challengeId);
                   setSmsCode('');
+                  setSmsCooldown(60);
                 } catch (requestError) {
                   setError(safeError(requestError, 'We could not send another code. Please wait and try again.'));
                 }
               }}
               style={styles.textAction}
             >
-              <Text style={{ color: colors.primary, fontFamily: F.s }}>Resend SMS code</Text>
+              <Text style={{ color: smsCooldown ? colors.mutedForeground : colors.primary, fontFamily: F.s }}>
+                {smsCooldown ? `Resend SMS in ${smsCooldown}s` : 'Resend SMS code'}
+              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -409,14 +484,20 @@ export default function CustomerAuth() {
             />
             <Pressable
               testID="resend-email-code"
+              disabled={busy || emailCooldown > 0}
               onPress={async () => {
                 setError('');
-                const { error: sendError } = await signUp.verifications.sendEmailCode();
-                if (sendError) setError(safeError(sendError, 'We could not send another email code.'));
+                try {
+                  const { error: sendError } = await signUp.verifications.sendEmailCode();
+                  if (sendError) throw sendError;
+                  setEmailCooldown(60);
+                } catch (sendError) { setError(safeError(sendError, 'We could not send another email code.')); }
               }}
               style={styles.textAction}
             >
-              <Text style={{ color: colors.primary, fontFamily: F.s }}>Send another email code</Text>
+              <Text style={{ color: emailCooldown ? colors.mutedForeground : colors.primary, fontFamily: F.s }}>
+                {emailCooldown ? `Resend email in ${emailCooldown}s` : 'Send another email code'}
+              </Text>
             </Pressable>
           </View>
         ) : null}

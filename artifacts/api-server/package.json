@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:voice": "esbuild src/services/voice.test.ts --bundle --platform=node --format=esm --external:express --external:@clerk/* --external:twilio --outfile=dist/voice.test.mjs && node --test dist/voice.test.mjs",
     "test:pricing": "esbuild src/services/pricing.test.ts --bundle --platform=node --format=esm --external:express --outfile=dist/pricing.test.mjs && node --test dist/pricing.test.mjs",
-    "test:customer-auth": "esbuild src/services/customer-auth.test.ts --bundle --platform=node --format=esm --outfile=dist/customer-auth.test.mjs && node --test dist/customer-auth.test.mjs"
+    "test:customer-auth": "esbuild src/services/customer-auth.test.ts --bundle --platform=node --format=cjs --external:express --external:@clerk/* --external:pg-native --outfile=dist/customer-auth.test.cjs && node --test dist/customer-auth.test.cjs"
   },
   "dependencies": {
     "@clerk/express": "^2.1.90",

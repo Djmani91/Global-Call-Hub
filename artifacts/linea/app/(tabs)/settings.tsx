@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '@clerk/expo';
+import { useUser } from '@clerk/expo';
 import { useQueryClient } from '@tanstack/react-query';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -28,6 +29,9 @@ const ITEMS: { key: string; label: string; icon: keyof typeof Feather.glyphMap }
 export default function Settings() {
   const c = useColors();
   const { profile } = useApp();
+  const { user } = useUser();
+  const customerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || profile.name;
+  const customerEmail = user?.primaryEmailAddress?.emailAddress ?? '';
   const { signOut } = useAuth();
   const queryClient = useQueryClient();
   const account = useGetCustomerAuthMe({
@@ -40,10 +44,10 @@ export default function Settings() {
       <ScrollView contentContainerStyle={{ paddingBottom: bottom }}>
         <Press testID="settings-profile" onPress={() => router.push('/profile')} style={styles.profile} scale={0.98}>
           <View style={[styles.avatar, { backgroundColor: '#D9F5E3' }]}>
-            <Text style={{ fontFamily: F.m, fontSize: 34, color: '#1F7A45' }}>{initials(profile.name)}</Text>
+            <Text style={{ fontFamily: F.m, fontSize: 34, color: '#1F7A45' }}>{initials(customerName)}</Text>
           </View>
-          <Text style={{ fontFamily: F.b, fontSize: 22, color: c.foreground, marginTop: 12 }}>{profile.name}</Text>
-          <Text style={{ fontFamily: F.r, fontSize: 15, color: c.mutedForeground, marginTop: 2 }}>{profile.email}</Text>
+          <Text style={{ fontFamily: F.b, fontSize: 22, color: c.foreground, marginTop: 12 }}>{customerName}</Text>
+          <Text style={{ fontFamily: F.r, fontSize: 15, color: c.mutedForeground, marginTop: 2 }}>{customerEmail}</Text>
           <View style={[styles.pill, { backgroundColor: c.card }]}>
             <Feather name="edit-2" size={13} color={c.primary} />
             <Text style={{ fontFamily: F.m, fontSize: 13, color: c.primary }}>Edit profile</Text>
@@ -83,7 +87,7 @@ export default function Settings() {
             <Text style={{ flex: 1, fontFamily: F.r, fontSize: 16, color: c.foreground }}>Sign out</Text>
           </Press>
         </View>
-        <Text style={{ fontFamily: F.r, fontSize: 13, color: c.mutedForeground, padding: 18 }}>Linea 0.1 · Demo build · Data stored on this device only</Text>
+        <Text style={{ fontFamily: F.r, fontSize: 13, color: c.mutedForeground, padding: 18 }}>Linea 0.1 · Preview build</Text>
       </ScrollView>
     </View>
   );

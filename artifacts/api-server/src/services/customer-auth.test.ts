@@ -1,5 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import express from "express";
+import { clerkMiddleware } from "@clerk/express";
+import customerAuthRouter from "../routes/customer-auth";
 import {
   checkTwilioVerification,
   digestChallenge,
@@ -59,6 +62,9 @@ test("admin access requires a matching verified primary email", () => {
   assert.equal(isConfiguredAdmin(email, { LINEA_ADMIN_EMAIL: "OWNER@example.com" }), true);
   assert.equal(isConfiguredAdmin(email, { LINEA_ADMIN_EMAIL: "other@example.com" }), false);
   assert.equal(isConfiguredAdmin(null, { LINEA_ADMIN_EMAIL: "owner@example.com" }), false);
+  const ownerHash = digestChallenge("owner@example.com");
+  assert.equal(isConfiguredAdmin(email, { LINEA_ADMIN_EMAIL_SHA256: ownerHash }), true);
+  assert.equal(isConfiguredAdmin("other@example.com", { LINEA_ADMIN_EMAIL_SHA256: ownerHash }), false);
   assert.equal(verifiedPrimaryEmail({
     ...user,
     emailAddresses: [{ ...user.emailAddresses[0], verification: { status: "unverified" } }],
@@ -97,4 +103,53 @@ test("Twilio Verify uses form-encoded server requests and reports only safe fail
       new Response(JSON.stringify({ code: 60200 }), { status: 400 })),
     (error: unknown) => error instanceof VerifyProviderError && error.status === 400 && error.providerCode === 60200,
   );
+});
+
+test("HTTP authentication routes reject anonymous access and malformed requests without sending SMS", async () => {
+  const app = express();
+  app.use(express.json());
+  app.use(clerkMiddleware({
+    publishableKey: `pk_test_${Buffer.from("linea-fixture.clerk.accounts.dev$").toString("base64")}`,
+  }));
+  app.use("/api", customerAuthRouter);
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>(resolve => server.once("listening", resolve));
+  const address = server.address();
+  assert(address && typeof address === "object");
+  const base = `http://127.0.0.1:${address.port}/api`;
+  try {
+    for (const path of ["/auth/me", "/admin/customers"]) {
+      for (const token of [undefined, "forged"]) {
+        const response = await fetch(`${base}${path}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        assert.equal(response.status, 401);
+        assert.equal(response.headers.get("cache-control"), "no-store");
+        assert.equal((await response.text()).includes("customers"), false);
+      }
+    }
+    const complete = await fetch(`${base}/auth/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ registrationToken: "untrusted-proof" }),
+    });
+    assert.equal(complete.status, 401);
+    for (const phoneNumber of ["07700900123", "+0123456789", "+44 7700 900123"]) {
+      const response = await fetch(`${base}/auth/phone/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber }),
+      });
+      assert.equal(response.status, 400);
+    }
+    const invalidCheck = await fetch(`${base}/auth/phone/check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ challengeId: "", code: "not-a-code" }),
+    });
+    assert.equal(invalidCheck.status, 400);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 });

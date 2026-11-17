@@ -1,4 +1,4 @@
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 export type TwilioVerifyConfig = {
   apiKeySid: string;
@@ -64,6 +64,13 @@ export function verifiedPrimaryEmail(user: {
 
 export function isConfiguredAdmin(email: string | null, env: NodeJS.ProcessEnv = process.env): boolean {
   if (!email) return false;
+  const ownerHash = env.LINEA_ADMIN_EMAIL_SHA256?.trim().toLowerCase();
+  if (ownerHash && /^[0-9a-f]{64}$/.test(ownerHash)) {
+    return timingSafeEqual(
+      Buffer.from(ownerHash, "hex"),
+      createHash("sha256").update(email.trim().toLowerCase()).digest(),
+    );
+  }
   const allowed = env.LINEA_ADMIN_EMAIL?.trim().toLowerCase();
   return Boolean(allowed && email.trim().toLowerCase() === allowed);
 }

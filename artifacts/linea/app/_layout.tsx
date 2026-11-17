@@ -8,17 +8,17 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { Pressable } from 'react-native';
+import { Platform, Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppProvider } from '@/context/AppContext';
 import { useApp } from '@/context/AppContext';
 import { BillingProvider } from '@/context/BillingContext';
 import { ClerkLoaded, ClerkProvider, useAuth, useUser } from '@clerk/expo';
 import colors from '@/constants/colors';
-import { setAuthTokenGetter, setBaseUrl } from '@workspace/api-client-react';
+import { setAuthTokenGetter, setBaseUrl, useGetCustomerAuthMe, getGetCustomerAuthMeQueryKey } from '@workspace/api-client-react';
 
 SplashScreen.preventAutoHideAsync();
-if (process.env.EXPO_PUBLIC_DOMAIN) {
+if (Platform.OS !== 'web' && process.env.EXPO_PUBLIC_DOMAIN) {
   setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 }
 const queryClient = new QueryClient();
@@ -33,6 +33,10 @@ const close = () => (
 );
 
 function RootLayoutNav() {
+  const { isSignedIn, userId } = useAuth();
+  const account = useGetCustomerAuthMe({
+    query: { queryKey: [...getGetCustomerAuthMeQueryKey(), userId], enabled: !!isSignedIn, retry: false },
+  });
   return (
     <Stack
       screenOptions={{
@@ -45,8 +49,9 @@ function RootLayoutNav() {
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="auth" options={{ headerShown: false }} />
+      <Stack.Protected guard={!!isSignedIn && !!account.data?.customer}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="admin/customers" options={{ title: 'Customers' }} />
       <Stack.Screen name="conversation/[id]" options={{ title: '' }} />
       <Stack.Screen name="compose" options={{ title: 'New message', presentation: 'modal', headerLeft: close }} />
@@ -59,6 +64,7 @@ function RootLayoutNav() {
       <Stack.Screen name="topup" options={{ title: 'Top up', presentation: 'modal', headerLeft: close }} />
       <Stack.Screen name="profile" options={{ title: 'Edit profile' }} />
       <Stack.Screen name="settings/[section]" options={{ title: '' }} />
+      </Stack.Protected>
     </Stack>
   );
 }
@@ -66,11 +72,11 @@ function RootLayoutNav() {
 function CustomerSessionProviders({ children }: { children: React.ReactNode }) {
   const { getToken, userId, isSignedIn } = useAuth();
   const { user, isLoaded: userLoaded } = useUser();
-  const { setProfile, resetDemo, ready } = useApp();
+  const { profile, setProfile, ready } = useApp();
   const previousUserId = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    setAuthTokenGetter(() => getToken());
+    if (Platform.OS !== 'web') setAuthTokenGetter(() => getToken());
   }, [getToken]);
 
   useEffect(() => {
@@ -78,16 +84,17 @@ function CustomerSessionProviders({ children }: { children: React.ReactNode }) {
     if (previousUserId.current === userId) return;
     previousUserId.current = userId ?? null;
     queryClient.clear();
-    resetDemo();
-    if (user) {
+  }, [userId, ready, userLoaded]);
+  useEffect(() => {
+    if (ready && userLoaded && user) {
+      const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Linea customer';
+      const email = user.primaryEmailAddress?.emailAddress ?? '';
+      if (profile.name === name && profile.email === email) return;
       setProfile({
-        name: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Linea customer',
-        email: user.primaryEmailAddress?.emailAddress ?? '',
-        homeCountry: 'GB',
-        billingCountry: 'GB',
+        ...profile, name, email,
       });
     }
-  }, [userId, ready, userLoaded]);
+  }, [ready, userLoaded, user, profile.name, profile.email]);
 
   return (
     <BillingProvider customerId={isSignedIn ? userId : null}>

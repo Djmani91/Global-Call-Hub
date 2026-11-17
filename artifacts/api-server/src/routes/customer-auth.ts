@@ -126,6 +126,11 @@ router.post("/auth/phone/start", async (req, res): Promise<void> => {
       res.status(429).json({ error: "Too many code requests. Please wait before trying again." });
       return;
     }
+    const currentUserId = getAuth(req).userId;
+    if (currentUserId && !await incrementRateLimit("account-send-hour", currentUserId, 8, 60 * 60_000)) {
+      res.status(429).json({ error: "Too many code requests. Please wait before trying again." });
+      return;
+    }
 
     const challengeId = randomBytes(32).toString("base64url");
     const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS);
@@ -295,6 +300,10 @@ router.post("/auth/complete", requireCustomer, async (req, res): Promise<void> =
     const phoneVerifiedAt = challenge?.phoneVerifiedAt;
     if (!challenge || !phoneVerifiedAt) {
       res.status(400).json({ error: "Verify your phone number before completing signup." });
+      return;
+    }
+    if (challenge.expiresAt.getTime() <= Date.now()) {
+      res.status(400).json({ error: "Your phone verification has expired. Request a new SMS code to finish signup." });
       return;
     }
 

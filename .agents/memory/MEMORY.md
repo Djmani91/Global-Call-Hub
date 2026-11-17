@@ -1,2 +1,3 @@
 - [Telephony product scope](telephony-product.md) — Twilio calling app; 3× retail pricing and billing-country display currencies.
 - [Native calling boundary](native-calling-boundary.md) — approved native-build evidence is required; Expo Go and server checks never prove background Voice delivery.
+- [Phone-first identity boundary](phone-auth-boundary.md) — phone proof must preserve the existing Clerk account; email and admin ownership require independent proof.

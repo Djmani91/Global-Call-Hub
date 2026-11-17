@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@clerk/expo';
 import { setHapticsEnabled } from '@/components/ui';
 import { CallEntry, DEMO_CALLS, DEMO_THREADS, Thread } from '@/data/demo';
 
@@ -28,33 +29,48 @@ type Ctx = Store & {
   toggleShortlist: (id: string) => void;
   resetDemo: () => void;
 };
-const AppContext = createContext<Ctx | null>(null);
+// Preserve the Context definition across Metro lazy-route/Fast Refresh evaluations.
+// Customer state stays in the provider and is never retained in this registry.
+const contextRegistry = globalThis as typeof globalThis & {
+  __lineaAppContext?: React.Context<Ctx | null>;
+};
+const AppContext = contextRegistry.__lineaAppContext ??= createContext<Ctx | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { userId } = useAuth();
+  const storageKey = userId ? `linea.store.v2.${userId}` : KEY;
   const [store, setStore] = useState<Store>(DEFAULT);
   const [ready, setReady] = useState(false);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
+    let cancelled = false;
+    setReady(false);
+    setStore(DEFAULT);
+    AsyncStorage.getItem(storageKey)
       .then((raw) => {
+        if (cancelled) return;
         if (raw) {
           const saved = JSON.parse(raw);
           setStore({ ...DEFAULT, ...saved, profile: { ...DEFAULT.profile, ...saved.profile } });
         }
       })
       .catch(() => {})
-      .finally(() => setReady(true));
-  }, []);
+      .finally(() => {
+        if (!cancelled) { setLoadedKey(storageKey); setReady(true); }
+      });
+    return () => { cancelled = true; };
+  }, [storageKey]);
   useEffect(() => {
-    if (ready) AsyncStorage.setItem(KEY, JSON.stringify(store)).catch(() => {});
-  }, [store, ready]);
+    if (ready && loadedKey === storageKey) AsyncStorage.setItem(storageKey, JSON.stringify(store)).catch(() => {});
+  }, [store, ready, loadedKey, storageKey]);
 
   useEffect(() => { setHapticsEnabled(store.prefs.haptics); }, [store.prefs.haptics]);
 
   const update = useCallback((fn: (s: Store) => Store) => setStore(fn), []);
 
   const value = useMemo<Ctx>(() => ({
-    ...store, ready,
+    ...store, ready: ready && loadedKey === storageKey,
     setProfile: (profile) => update((s) => ({ ...s, profile })),
     setPref: (k, v) => update((s) => ({ ...s, prefs: { ...s.prefs, [k]: v } })),
     saveLocalMessage: (number, text) => {
@@ -78,7 +94,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toggleBlocked: (n) => update((s) => ({ ...s, blocked: s.blocked.includes(n) ? s.blocked.filter((b) => b !== n) : [...s.blocked, n] })),
     toggleShortlist: (id) => update((s) => ({ ...s, reserved: s.reserved.includes(id) ? s.reserved.filter((b) => b !== id) : [...s.reserved, id] })),
     resetDemo: () => update(() => DEFAULT),
-  }), [store, ready, update]);
+  }), [store, ready, loadedKey, storageKey, update]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
