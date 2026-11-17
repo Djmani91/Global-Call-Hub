@@ -15,6 +15,12 @@ The user wants outgoing and incoming calls inside the installed app on both Andr
 
 **How to apply:** Scope calling for both platforms, including native incoming-call delivery. Do not substitute browser calling or the system phone dialer without the user's agreement.
 
+Start installed calling implementation and testing with Android; iPhone remains a later supported target.
+
+**Why:** The user explicitly said “Start from the Android” when asking to begin real-call testing.
+
+**How to apply:** Prioritize Android build compatibility and incoming-call push setup without dropping the later iPhone scope.
+
 Linea's retail rates are three times the current Twilio cost, including monthly numbers and incoming/outgoing voice and SMS. Display currency follows the customer's saved billing country, not the purchased number's country.
 
 **Why:** The user explicitly requested a 3× multiplier and selected “Customer billing country” when asked how currency should be chosen.
