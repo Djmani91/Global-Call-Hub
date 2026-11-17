@@ -110,10 +110,15 @@ export interface VoiceWebhookInput {
   [key: string]: unknown;
 }
 
-export type TwilioCountryCode = typeof TwilioCountryCode[keyof typeof TwilioCountryCode];
+/**
+ * @pattern ^[A-Z]{2}$
+ */
+export type TwilioCountryCode = string;
+
+export type BillingCountryCode = typeof BillingCountryCode[keyof typeof BillingCountryCode];
 
 
-export const TwilioCountryCode = {
+export const BillingCountryCode = {
   GB: 'GB',
   AU: 'AU',
   AT: 'AT',
@@ -177,7 +182,7 @@ export interface PricingSection {
 
 export interface CountryPricing {
   countryCode: TwilioCountryCode;
-  billingCountry: TwilioCountryCode;
+  billingCountry: BillingCountryCode;
   currency: string;
   multiplier: number;
   fetchedAt: string;
@@ -196,6 +201,17 @@ export const TwilioPhoneNumberType = {
   mobile: 'mobile',
   'toll-free': 'toll-free',
 } as const;
+
+export interface TwilioAvailableNumberCountry {
+  countryCode: TwilioCountryCode;
+  name: string;
+  numberTypes: TwilioPhoneNumberType[];
+}
+
+export interface TwilioAvailableNumberCountriesResponse {
+  fetchedAt: string;
+  countries: TwilioAvailableNumberCountry[];
+}
 
 export type TwilioAvailablePhoneNumberCapabilities = {
   voice: boolean;
@@ -226,7 +242,7 @@ export interface ApiError {
 
 export type GetTwilioPricingParams = {
 countryCode: TwilioCountryCode;
-billingCountry: TwilioCountryCode;
+billingCountry: BillingCountryCode;
 };
 
 export type GetTwilioAvailableNumbersParams = {

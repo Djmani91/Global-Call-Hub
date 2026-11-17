@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import {
+  GetTwilioAvailableNumberCountriesResponse,
   GetTwilioAvailableNumbersQueryParams,
   GetTwilioAvailableNumbersResponse,
 } from "@workspace/api-zod";
@@ -13,10 +14,75 @@ const RESOURCE_BY_TYPE = {
 } as const;
 
 const CACHE_TTL_MS = 45_000;
+const COUNTRIES_CACHE_TTL_MS = 6 * 60 * 60_000;
+const NUMBER_TYPES = {
+  local: "local",
+  mobile: "mobile",
+  toll_free: "toll-free",
+} as const;
+let countriesCache: {
+  expiresAt: number;
+  response: ReturnType<typeof GetTwilioAvailableNumberCountriesResponse.parse>;
+} | null = null;
 const cache = new Map<
   string,
   { expiresAt: number; response: ReturnType<typeof GetTwilioAvailableNumbersResponse.parse> }
 >();
+
+router.get("/twilio/available-number-countries", async (req, res): Promise<void> => {
+  if (countriesCache && countriesCache.expiresAt > Date.now()) {
+    res.json(countriesCache.response);
+    return;
+  }
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
+  const apiKeySid = process.env.TWILIO_API_KEY_SID?.trim();
+  const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
+  if (!accountSid || !apiKeySid || !apiKeySecret) {
+    res.status(503).json({ error: "Live number search is not configured on the server." });
+    return;
+  }
+  try {
+    const url = new URL(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/AvailablePhoneNumbers.json`,
+    );
+    url.searchParams.set("PageSize", "1000");
+    const upstream = await fetch(url, {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${apiKeySid}:${apiKeySecret}`).toString("base64")}`,
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(12_000),
+    });
+    const body = await upstream.json() as {
+      countries?: Array<{
+        country_code?: string;
+        country?: string;
+        subresource_uris?: Record<string, string>;
+      }>;
+      code?: number;
+    };
+    if (!upstream.ok) {
+      req.log.warn({ status: upstream.status, twilioCode: body.code }, "Twilio country catalog request failed");
+      res.status(503).json({ error: "Twilio could not load its available number countries. Please retry." });
+      return;
+    }
+    const response = GetTwilioAvailableNumberCountriesResponse.parse({
+      fetchedAt: new Date().toISOString(),
+      countries: (body.countries ?? []).flatMap((item) => {
+        const countryCode = item.country_code?.toUpperCase();
+        if (!countryCode || !/^[A-Z]{2}$/.test(countryCode) || !item.country) return [];
+        const numberTypes = Object.keys(item.subresource_uris ?? {})
+          .flatMap((type) => NUMBER_TYPES[type as keyof typeof NUMBER_TYPES] ?? []);
+        return numberTypes.length ? [{ countryCode, name: item.country, numberTypes }] : [];
+      }).sort((a, b) => a.name.localeCompare(b.name)),
+    });
+    countriesCache = { expiresAt: Date.now() + COUNTRIES_CACHE_TTL_MS, response };
+    res.json(response);
+  } catch (error) {
+    req.log.warn({ timedOut: error instanceof Error && error.name === "TimeoutError" }, "Unable to reach Twilio country catalog");
+    res.status(503).json({ error: "Could not reach Twilio to load available number countries. Please retry." });
+  }
+});
 
 router.get("/twilio/available-numbers", async (req, res): Promise<void> => {
   const parsed = GetTwilioAvailableNumbersQueryParams.safeParse(req.query);

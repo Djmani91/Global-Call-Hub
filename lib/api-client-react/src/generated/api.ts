@@ -28,6 +28,7 @@ import type {
   GetTwilioAvailableNumbersParams,
   GetTwilioPricingParams,
   HealthStatus,
+  TwilioAvailableNumberCountriesResponse,
   TwilioAvailableNumbersResponse,
   VoiceReadiness,
   VoiceTokenInput,
@@ -855,6 +856,84 @@ export function useGetTwilioAvailableNumbers<TData = Awaited<ReturnType<typeof g
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetTwilioAvailableNumbersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTwilioAvailableNumberCountriesUrl = () => {
+
+
+
+
+  return `/api/twilio/available-number-countries`
+}
+
+/**
+ * Returns available countries and number types from Twilio. SMS and voice capabilities are still confirmed on individual numbers.
+ * @summary List countries where this Twilio account offers numbers
+ */
+export const getTwilioAvailableNumberCountries = async ( options?: Parameters<typeof customFetch>[1]): Promise<TwilioAvailableNumberCountriesResponse> => {
+
+  return customFetch<TwilioAvailableNumberCountriesResponse>(getGetTwilioAvailableNumberCountriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTwilioAvailableNumberCountriesQueryKey = () => {
+    return [
+    `/api/twilio/available-number-countries`
+    ] as const;
+    }
+
+
+export const getGetTwilioAvailableNumberCountriesQueryOptions = <TData = Awaited<ReturnType<typeof getTwilioAvailableNumberCountries>>, TError = ErrorType<ApiError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTwilioAvailableNumberCountries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTwilioAvailableNumberCountriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTwilioAvailableNumberCountries>>> = ({ signal }) => getTwilioAvailableNumberCountries({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTwilioAvailableNumberCountries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTwilioAvailableNumberCountriesQueryResult = NonNullable<Awaited<ReturnType<typeof getTwilioAvailableNumberCountries>>>
+export type GetTwilioAvailableNumberCountriesQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary List countries where this Twilio account offers numbers
+ */
+
+export function useGetTwilioAvailableNumberCountries<TData = Awaited<ReturnType<typeof getTwilioAvailableNumberCountries>>, TError = ErrorType<ApiError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTwilioAvailableNumberCountries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTwilioAvailableNumberCountriesQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

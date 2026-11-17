@@ -115,7 +115,7 @@ test("pricing API handles conversion, cache isolation, partial permissions and m
       assert.deepEqual(section.rates, []);
       assert.equal(section.exchangeRate, null);
     }
-    assert.equal((await get("ZZ", "US")).status, 400);
+    assert.equal((await get("Z", "US")).status, 400);
     assert.equal((await get("US", "ZZ")).status, 400);
     assert.equal((await realFetch(`${base}/twilio/pricing?countryCode=US`)).status, 400);
     assert.deepEqual(await exchangeRate("USD", "USD"), { rate: 1, date: null });

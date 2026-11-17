@@ -114,13 +114,19 @@ export const HandleVoiceWebhookResponse = zod.unknown()
 /**
  * @summary Read marked-up country prices in the customer's billing currency
  */
+export const getTwilioPricingQueryCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
+
+
 export const GetTwilioPricingQueryParams = zod.object({
-  "countryCode": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US']),
+  "countryCode": zod.coerce.string().regex(getTwilioPricingQueryCountryCodeRegExp),
   "billingCountry": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US'])
 })
 
+export const getTwilioPricingResponseCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
+
+
 export const GetTwilioPricingResponse = zod.object({
-  "countryCode": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US']),
+  "countryCode": zod.string().regex(getTwilioPricingResponseCountryCodeRegExp),
   "billingCountry": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US']),
   "currency": zod.string(),
   "multiplier": zod.number(),
@@ -156,6 +162,7 @@ export const HealthCheckResponse = zod.object({
  * Searches Twilio inventory for a supported country. This endpoint never purchases a number.
  * @summary Search live available phone numbers
  */
+export const getTwilioAvailableNumbersQueryCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
 export const getTwilioAvailableNumbersQuerySearchMin = 2;
 export const getTwilioAvailableNumbersQuerySearchMax = 16;
 
@@ -164,13 +171,16 @@ export const getTwilioAvailableNumbersQuerySearchRegExp = new RegExp('^[0-9]{2,1
 
 
 export const GetTwilioAvailableNumbersQueryParams = zod.object({
-  "countryCode": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US']),
+  "countryCode": zod.coerce.string().regex(getTwilioAvailableNumbersQueryCountryCodeRegExp),
   "phoneNumberType": zod.enum(['local', 'mobile', 'toll-free']),
   "search": zod.coerce.string().min(getTwilioAvailableNumbersQuerySearchMin).max(getTwilioAvailableNumbersQuerySearchMax).regex(getTwilioAvailableNumbersQuerySearchRegExp).optional().describe('Digits to match; a three-digit US or Canada area code uses Twilio\'s area-code filter.')
 })
 
+export const getTwilioAvailableNumbersResponseCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
+
+
 export const GetTwilioAvailableNumbersResponse = zod.object({
-  "countryCode": zod.enum(['GB', 'AU', 'AT', 'CA', 'FI', 'FR', 'IL', 'MX', 'PR', 'US']),
+  "countryCode": zod.string().regex(getTwilioAvailableNumbersResponseCountryCodeRegExp),
   "phoneNumberType": zod.enum(['local', 'mobile', 'toll-free']),
   "fetchedAt": zod.coerce.date(),
   "numbers": zod.array(zod.object({
@@ -183,6 +193,23 @@ export const GetTwilioAvailableNumbersResponse = zod.object({
   "sms": zod.boolean(),
   "mms": zod.boolean()
 })
+}))
+})
+
+
+/**
+ * Returns available countries and number types from Twilio. SMS and voice capabilities are still confirmed on individual numbers.
+ * @summary List countries where this Twilio account offers numbers
+ */
+export const getTwilioAvailableNumberCountriesResponseCountriesItemCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
+
+
+export const GetTwilioAvailableNumberCountriesResponse = zod.object({
+  "fetchedAt": zod.coerce.date(),
+  "countries": zod.array(zod.object({
+  "countryCode": zod.string().regex(getTwilioAvailableNumberCountriesResponseCountriesItemCountryCodeRegExp),
+  "name": zod.string(),
+  "numberTypes": zod.array(zod.enum(['local', 'mobile', 'toll-free']))
 }))
 })
 

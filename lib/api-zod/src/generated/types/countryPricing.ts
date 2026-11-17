@@ -5,12 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BillingCountryCode } from './billingCountryCode';
 import type { PricingSection } from './pricingSection';
 import type { TwilioCountryCode } from './twilioCountryCode';
 
 export interface CountryPricing {
   countryCode: TwilioCountryCode;
-  billingCountry: TwilioCountryCode;
+  billingCountry: BillingCountryCode;
   currency: string;
   multiplier: number;
   fetchedAt: string;

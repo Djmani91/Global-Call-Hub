@@ -5,12 +5,14 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import {
   getGetTwilioAvailableNumbersQueryKey,
   useGetTwilioAvailableNumbers,
+  getGetTwilioAvailableNumberCountriesQueryKey,
+  useGetTwilioAvailableNumberCountries,
   getGetTwilioPricingQueryKey,
   useGetTwilioPricing,
 } from '@workspace/api-client-react';
-import type { TwilioCountryCode, TwilioPhoneNumberType } from '@workspace/api-client-react';
+import type { BillingCountryCode, TwilioCountryCode, TwilioPhoneNumberType } from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
-import { findCountry } from '@/data/demo';
+import { countryFromTwilio, findCountry } from '@/data/demo';
 import { Btn, CountryMark, DemoNote, EmptyState, F, Press, SearchBar, useBottomPad } from '@/components/ui';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useApp } from '@/context/AppContext';
@@ -27,11 +29,19 @@ export default function CountryNumbers() {
   const c = useColors();
   const { profile, ready } = useApp();
   const { country } = useLocalSearchParams<{ country: string }>();
+  const countriesQuery = useGetTwilioAvailableNumberCountries({ query: {
+    queryKey: getGetTwilioAvailableNumberCountriesQueryKey(),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  } });
+  const countryEntry = countriesQuery.data?.countries.find(item => item.countryCode === country);
+  const ct = countryEntry ? countryFromTwilio(countryEntry) : findCountry(country);
   const [phoneNumberType, setPhoneNumberType] = useState<TwilioPhoneNumberType>('local');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
-  const ct = findCountry(country);
+  const availableTypes = countryEntry?.numberTypes ?? NUMBER_TYPES.map(item => item.value);
+  const activeType = availableTypes.includes(phoneNumberType) ? phoneNumberType : (availableTypes[0] ?? 'local');
   const bottom = useBottomPad(false);
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(searchTerm), 350);
@@ -42,19 +52,19 @@ export default function CountryNumbers() {
   const requestSearch = debouncedSearch.length >= 2 ? debouncedSearch : undefined;
   const usesAreaCodeFilter = Boolean(
     ct && (ct.code === 'US' || ct.code === 'CA') &&
-    phoneNumberType !== 'toll-free' && requestSearch?.length === 3,
+    activeType !== 'toll-free' && requestSearch?.length === 3,
   );
   const numbersQuery = useGetTwilioAvailableNumbers(
     {
       countryCode: (ct?.code ?? 'US') as TwilioCountryCode,
-      phoneNumberType,
+      phoneNumberType: activeType,
       search: requestSearch,
     },
     {
       query: {
         queryKey: getGetTwilioAvailableNumbersQueryKey({
           countryCode: (ct?.code ?? 'US') as TwilioCountryCode,
-          phoneNumberType,
+          phoneNumberType: activeType,
           search: requestSearch,
         }),
         enabled: Boolean(ct) && !searchPending && !needsMoreDigits,
@@ -64,7 +74,7 @@ export default function CountryNumbers() {
     },
   );
   const pricingParams = { countryCode: (ct?.code ?? 'US') as TwilioCountryCode,
-    billingCountry: profile.billingCountry as TwilioCountryCode };
+    billingCountry: profile.billingCountry as BillingCountryCode };
   const pricingQuery = useGetTwilioPricing(pricingParams, { query: {
     queryKey: getGetTwilioPricingQueryKey(pricingParams), enabled: Boolean(ct) && ready,
     staleTime: 60_000, retry: false,
@@ -72,10 +82,15 @@ export default function CountryNumbers() {
   const pricing = !pricingQuery.isError ? pricingQuery.data : undefined;
   const pricingError = pricing?.sections.find(s => s.kind === 'numbers')?.error;
 
+  if (!ct && countriesQuery.isLoading) {
+    return <View style={{ flex: 1, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center' }}>
+      <ActivityIndicator color={c.primary} />
+    </View>;
+  }
   if (!ct) {
     return (
       <View style={{ flex: 1, backgroundColor: c.background }}>
-        <EmptyState icon="globe" title="Unknown country" body="Go back and pick a country from the list." />
+        <EmptyState icon="globe" title="Country unavailable" body={countriesQuery.isError ? 'Could not load the Twilio country list. Go back and retry.' : 'This country is not in your Twilio number catalog. Go back and choose another country.'} />
       </View>
     );
   }
@@ -132,8 +147,8 @@ export default function CountryNumbers() {
       </View>
 
       <View accessibilityRole="tablist" style={[styles.typePicker, { backgroundColor: c.card }]}>
-        {NUMBER_TYPES.map((item) => {
-          const active = phoneNumberType === item.value;
+        {NUMBER_TYPES.filter(item => availableTypes.includes(item.value)).map((item) => {
+          const active = activeType === item.value;
           return (
             <Press
               key={item.value}
@@ -241,7 +256,7 @@ export default function CountryNumbers() {
                   <Text style={{ fontFamily: F.r, fontSize: 13, color: c.mutedForeground }}>
                     {location || ct.name} · {services || 'No voice or messaging capability listed'}
                   </Text>
-                  {pricing ? <PricingSummary pricing={pricing} numberType={phoneNumberType} /> :
+                  {pricing ? <PricingSummary pricing={pricing} numberType={activeType} /> :
                     <Text style={{ fontFamily: F.r, fontSize: 13, color: c.mutedForeground }}>
                       {pricingQuery.isLoading || !ready ? 'Loading monthly price…' : 'Monthly price unavailable'}
                     </Text>}
@@ -280,8 +295,8 @@ export default function CountryNumbers() {
           icon="phone"
           title="No numbers returned"
           body={requestSearch
-            ? `Twilio found no ${phoneNumberType} numbers matching ${requestSearch} in ${ct.name}. Try different digits or another number type.`
-            : `Twilio did not return ${phoneNumberType} numbers for ${ct.name} in this search. Try another number type or country.`}
+            ? `Twilio found no ${activeType} numbers matching ${requestSearch} in ${ct.name}. Try different digits or another number type.`
+            : `Twilio did not return ${activeType} numbers for ${ct.name} in this search. Try another number type or country.`}
         />
       )}
 

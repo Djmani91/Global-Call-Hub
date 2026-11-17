@@ -1,3 +1,5 @@
+import type { TwilioAvailableNumberCountry } from '@workspace/api-client-react';
+
 export type Country = { code: string; name: string; dial: string; kind: string; stripes: string[]; vertical?: boolean; note: string; local?: boolean };
 export const COUNTRIES: Country[] = [
   { code: 'GB', name: 'United Kingdom', dial: '+44', kind: 'Mobile & Landline', stripes: ['#1E3E8C', '#F4F1EA', '#C8202F'], note: 'Proof of address may be required by the regulator.', local: true },
@@ -12,6 +14,19 @@ export const COUNTRIES: Country[] = [
   { code: 'US', name: 'United States', dial: '+1', kind: 'Mobile', stripes: ['#C8202F', '#F4F1EA', '#1E3E8C'], note: 'Messaging to US numbers requires A2P 10DLC registration.' },
 ];
 export const findCountry = (code?: string) => COUNTRIES.find((c) => c.code === code);
+export function countryFromTwilio(item: TwilioAvailableNumberCountry): Country {
+  const existing = findCountry(item.countryCode);
+  const kind = item.numberTypes.map((type) => type === 'toll-free' ? 'Toll-free' : type[0].toUpperCase() + type.slice(1)).join(' · ');
+  if (existing) return { ...existing, kind };
+  return {
+    code: item.countryCode,
+    name: item.name,
+    dial: '',
+    kind,
+    stripes: ['#33343B', '#41434B', '#292A30'],
+    note: 'Local availability, capabilities and document rules vary.',
+  };
+}
 
 const SAMPLE_DIGITS: Record<string, string[]> = {
   GB: ['7700 900481', '7700 900726', '7700 900153', '20 7946 0318'],

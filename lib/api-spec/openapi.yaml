@@ -174,7 +174,7 @@ paths:
           in: query
           required: true
           schema:
-            $ref: "#/components/schemas/TwilioCountryCode"
+            $ref: "#/components/schemas/BillingCountryCode"
       responses:
         "200":
           description: Independent pricing sections; unavailable sections contain a clear error and no rates
@@ -248,6 +248,25 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "503":
           description: Twilio credentials or service are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /twilio/available-number-countries:
+    get:
+      operationId: getTwilioAvailableNumberCountries
+      tags: [twilio]
+      summary: List countries where this Twilio account offers numbers
+      description: Returns available countries and number types from Twilio. SMS and voice capabilities are still confirmed on individual numbers.
+      responses:
+        "200":
+          description: Account-specific supported country catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwilioAvailableNumberCountriesResponse"
+        "503":
+          description: Twilio country catalog unavailable
           content:
             application/json:
               schema:
@@ -350,7 +369,7 @@ components:
         countryCode:
           $ref: "#/components/schemas/TwilioCountryCode"
         billingCountry:
-          $ref: "#/components/schemas/TwilioCountryCode"
+          $ref: "#/components/schemas/BillingCountryCode"
         currency:
           type: string
         multiplier:
@@ -409,10 +428,36 @@ components:
         - status
     TwilioCountryCode:
       type: string
+      pattern: "^[A-Z]{2}$"
+    BillingCountryCode:
+      type: string
       enum: [GB, AU, AT, CA, FI, FR, IL, MX, PR, US]
     TwilioPhoneNumberType:
       type: string
       enum: [local, mobile, toll-free]
+    TwilioAvailableNumberCountry:
+      type: object
+      properties:
+        countryCode:
+          $ref: "#/components/schemas/TwilioCountryCode"
+        name:
+          type: string
+        numberTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TwilioPhoneNumberType"
+      required: [countryCode, name, numberTypes]
+    TwilioAvailableNumberCountriesResponse:
+      type: object
+      properties:
+        fetchedAt:
+          type: string
+          format: date-time
+        countries:
+          type: array
+          items:
+            $ref: "#/components/schemas/TwilioAvailableNumberCountry"
+      required: [fetchedAt, countries]
     TwilioAvailablePhoneNumber:
       type: object
       properties:

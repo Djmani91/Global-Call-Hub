@@ -7,6 +7,7 @@
  */
 
 export * from './apiError';
+export * from './billingCountryCode';
 export * from './billingReadiness';
 export * from './billingReadinessCurrency';
 export * from './countryPricing';
@@ -26,6 +27,8 @@ export * from './getTwilioPricingParams';
 export * from './healthStatus';
 export * from './pricingSection';
 export * from './pricingSectionKind';
+export * from './twilioAvailableNumberCountriesResponse';
+export * from './twilioAvailableNumberCountry';
 export * from './twilioAvailableNumbersResponse';
 export * from './twilioAvailablePhoneNumber';
 export * from './twilioAvailablePhoneNumberCapabilities';

@@ -6,18 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type TwilioCountryCode = typeof TwilioCountryCode[keyof typeof TwilioCountryCode];
-
-
-export const TwilioCountryCode = {
-  GB: 'GB',
-  AU: 'AU',
-  AT: 'AT',
-  CA: 'CA',
-  FI: 'FI',
-  FR: 'FR',
-  IL: 'IL',
-  MX: 'MX',
-  PR: 'PR',
-  US: 'US',
-} as const;
+/**
+ * @pattern ^[A-Z]{2}$
+ */
+export type TwilioCountryCode = string;

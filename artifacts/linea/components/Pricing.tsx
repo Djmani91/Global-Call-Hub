@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { getGetTwilioPricingQueryKey, useGetTwilioPricing } from '@workspace/api-client-react';
-import type { CountryPricing, TwilioCountryCode, TwilioPhoneNumberType } from '@workspace/api-client-react';
+import {
+  getGetTwilioAvailableNumberCountriesQueryKey,
+  getGetTwilioPricingQueryKey,
+  useGetTwilioAvailableNumberCountries,
+  useGetTwilioPricing,
+} from '@workspace/api-client-react';
+import type { BillingCountryCode, CountryPricing, TwilioCountryCode, TwilioPhoneNumberType } from '@workspace/api-client-react';
 import { useApp } from '@/context/AppContext';
-import { COUNTRIES, findCountry } from '@/data/demo';
+import { countryFromTwilio, COUNTRIES, findCountry } from '@/data/demo';
 import { useColors } from '@/hooks/useColors';
 import { Btn, CountryMark, DemoNote, F, Press } from './ui';
 import { CURRENCIES, money } from '@/utils/currency';
@@ -94,7 +99,13 @@ export function PricingDetails({ initialCountry = 'US' }: { initialCountry?: str
   const c = useColors();
   const { profile, ready } = useApp();
   const [country, setCountry] = useState(initialCountry as TwilioCountryCode);
-  const params = { countryCode: country, billingCountry: profile.billingCountry as TwilioCountryCode };
+  const countriesQuery = useGetTwilioAvailableNumberCountries({ query: {
+    queryKey: getGetTwilioAvailableNumberCountriesQueryKey(),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  } });
+  const availableCountries = (countriesQuery.data?.countries ?? []).map(countryFromTwilio);
+  const params = { countryCode: country, billingCountry: profile.billingCountry as BillingCountryCode };
   const query = useGetTwilioPricing(params, { query: {
     queryKey: getGetTwilioPricingQueryKey(params), enabled: ready, staleTime: 60_000, retry: false,
   } });
@@ -102,7 +113,7 @@ export function PricingDetails({ initialCountry = 'US' }: { initialCountry?: str
   return <View style={{ gap: 12 }}>
     <Text style={{ fontFamily: F.b, fontSize: 21, color: c.foreground }}>Country rates</Text>
     <Text style={{ fontFamily: F.r, fontSize: 14, color: c.mutedForeground }}>Select a country to see its basic rates.</Text>
-    <View style={styles.chips}>{COUNTRIES.map(ct => <Press key={ct.code}
+    <View style={styles.chips}>{availableCountries.map(ct => <Press key={ct.code}
       testID={`rates-country-${ct.code}`} onPress={() => setCountry(ct.code as TwilioCountryCode)}
       accessibilityRole="radio" accessibilityState={{ selected: country === ct.code }}
       style={[styles.chip, { backgroundColor: country === ct.code ? c.accent : c.card, borderColor: country === ct.code ? c.primary : c.border }]}>
