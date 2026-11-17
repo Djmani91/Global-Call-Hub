@@ -40,7 +40,39 @@ export function PricingSummary({ pricing, numberType }: { pricing: CountryPricin
   </Text>;
 }
 
-const TITLES = { numbers: 'Monthly numbers', voice: 'Voice calls', sms: 'SMS messages' };
+const RATE_GROUPS = [
+  { id: 'rental', kind: 'numbers', direction: 'rental', title: 'Monthly number rental', unit: 'per month', hint: 'A separate monthly charge to keep your number.' },
+  { id: 'make-calls', kind: 'voice', direction: 'outgoing', title: 'Make calls', unit: 'per minute', hint: 'Calls to the selected country. Match the destination prefix and any origin restriction below.' },
+  { id: 'receive-calls', kind: 'voice', direction: 'incoming', title: 'Receive calls', unit: 'per minute', hint: 'Calls received on a number from the selected country. Match your number type below.' },
+  { id: 'send-sms', kind: 'sms', direction: 'outgoing', title: 'Send SMS', unit: 'per SMS segment', hint: 'SMS sent to the selected country. Match the destination network and sender number type below.' },
+  { id: 'receive-sms', kind: 'sms', direction: 'incoming', title: 'Receive SMS', unit: 'per SMS segment', hint: 'SMS received on a number from the selected country. Match your number type below.' },
+] as const;
+
+function UsageOverview({ pricing }: { pricing: CountryPricing }) {
+  const c = useColors();
+  return <View testID="usage-rates-overview" style={[styles.section, { backgroundColor: c.card }]}>
+    <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 18 }}>Call & SMS prices</Text>
+    <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 13 }}>
+      Published price ranges for the selected country. Your exact rate depends on number type, destination, origin and network; see the details below.
+    </Text>
+    {RATE_GROUPS.filter(group => group.direction !== 'rental').map(group => {
+      const section = pricing.sections.find(s => s.kind === group.kind);
+      const amounts = section?.rates.filter(rate => rate.direction === group.direction).map(rate => rate.amount) ?? [];
+      const low = Math.min(...amounts);
+      const high = Math.max(...amounts);
+      const price = !section || section.error || !amounts.length ? 'Rate unavailable'
+        : `${money(low, pricing.currency, true)}${low === high ? '' : ` – ${money(high, pricing.currency, true)}`} ${pricing.currency} ${group.unit}`;
+      return <View key={group.id} testID={`usage-summary-${group.id}`} style={[styles.rate, { borderTopColor: c.border }]}>
+        <Text style={{ fontFamily: F.s, color: c.foreground, fontSize: 15 }}>{group.title}</Text>
+        <Text style={{ fontFamily: F.b, color: c.primary, fontSize: 16 }}>{price}</Text>
+      </View>;
+    })}
+    <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 13 }}>
+      Monthly number rental is separate. Receiving calls or SMS is not automatically free or unlimited. Long SMS or some characters and emojis can require multiple segments. Call billing increments and minimum charges may apply.
+    </Text>
+  </View>;
+}
+
 export function PricingDetails({ initialCountry = 'US' }: { initialCountry?: string }) {
   const c = useColors();
   const { profile, ready } = useApp();
@@ -65,32 +97,35 @@ export function PricingDetails({ initialCountry = 'US' }: { initialCountry?: str
       Display: {CURRENCIES[profile.billingCountry] ?? 'Unknown currency'} · Billing: {findCountry(profile.billingCountry)?.name ?? profile.billingCountry}
     </Text>
     <Btn label="Change billing country" testID="rates-change-billing" kind="ghost" onPress={() => router.push('/settings/billing')} />
+    {data && !query.isError ? <UsageOverview pricing={data} /> : null}
     <DemoNote text="Linea rates = current Twilio cost × 3, converted on the server. Rental is rounded to 2 decimals; usage to 6, so small charges are not shown as free. Taxes, carrier surcharges, registration and other fees are not included." />
     {query.isLoading || !ready ? <ActivityIndicator color={c.primary} /> : query.isError ?
       <Text style={{ fontFamily: F.r, color: c.destructive }}>{query.error instanceof Error ? query.error.message : 'Unable to load pricing.'}</Text> :
-      data?.sections.map(section => {
-        const open = expanded.includes(section.kind);
-        const rates = open ? section.rates : section.rates.slice(0, 12);
-        return <View key={section.kind} style={[styles.section, { backgroundColor: c.card }]}>
-          <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 18 }}>{TITLES[section.kind]}</Text>
-          {section.error ? <Text testID={`pricing-error-${section.kind}`} style={{ fontFamily: F.r, color: c.destructive, fontSize: 14, lineHeight: 21 }}>{section.error}</Text> :
-            !section.rates.length ? <Text style={{ fontFamily: F.r, color: c.mutedForeground }}>No rates published for this country.</Text> : <>
+      data ? RATE_GROUPS.map(group => {
+        const section = data.sections.find(s => s.kind === group.kind);
+        const matchingRates = section?.rates.filter(rate => rate.direction === group.direction) ?? [];
+        const open = expanded.includes(group.id);
+        const rates = open ? matchingRates : matchingRates.slice(0, 3);
+        return <View key={group.id} testID={`pricing-group-${group.id}`} style={[styles.section, { backgroundColor: c.card }]}>
+          <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 18 }}>{group.title} · {group.unit}</Text>
+          <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 13 }}>{group.hint}</Text>
+          {!section || section.error ? <Text testID={`pricing-error-${group.id}`} style={{ fontFamily: F.r, color: c.destructive, fontSize: 14, lineHeight: 21 }}>{section?.error ?? 'Rates unavailable. Please refresh.'}</Text> :
+            !matchingRates.length ? <Text style={{ fontFamily: F.r, color: c.mutedForeground }}>No rates published for this country.</Text> : <>
               <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12 }}>
                 {section.sourceCurrency} → {data.currency} · rate {section.exchangeRate}
                 {section.exchangeDate ? ` · Frankfurter reference ${section.exchangeDate}` : ' · no conversion needed'}
               </Text>
               {rates.map((rate, index) => <View key={index} style={[styles.rate, { borderTopColor: c.border }]}>
-                <Text style={{ fontFamily: F.s, color: c.primary, fontSize: 12 }}>{rate.direction.toUpperCase()}</Text>
                 <Text style={{ fontFamily: F.m, color: c.foreground, fontSize: 14 }}>{rate.label}</Text>
                 {rate.prefixes.length ? <Text numberOfLines={open ? undefined : 2} style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12 }}>Destination prefixes: {rate.prefixes.join(', ')}</Text> : null}
-                <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 16 }}>{money(rate.amount, data.currency, rate.unit !== 'month')} {data.currency}/{rate.unit}</Text>
+                <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 16 }}>{money(rate.amount, data.currency, rate.unit !== 'month')} {data.currency} {group.unit}</Text>
               </View>)}
-              {section.rates.length > 12 ? <Btn label={open ? 'Show fewer rates' : `Show all ${section.rates.length} rates`}
-                kind="ghost" testID={`pricing-expand-${section.kind}`}
-                onPress={() => setExpanded(open ? expanded.filter(k => k !== section.kind) : [...expanded, section.kind])} /> : null}
+              {matchingRates.length > 3 ? <Btn label={open ? 'Show fewer rates' : `Show all ${matchingRates.length} rates`}
+                kind="ghost" testID={`pricing-expand-${group.id}`}
+                onPress={() => setExpanded(open ? expanded.filter(k => k !== group.id) : [...expanded, group.id])} /> : null}
             </>}
         </View>;
-      })}
+      }) : null}
     <Btn label="Refresh rates" icon="refresh-cw" testID="pricing-refresh" kind="ghost" onPress={() => query.refetch()} />
     {data ? <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12 }}>Checked {new Date(data.fetchedAt).toLocaleString()}. Quotes may be cached for 5 minutes.</Text> : null}
     <DemoNote text="Outgoing rates vary by destination prefix, origin and carrier. SMS is charged per segment, not necessarily per message. This is not a final checkout quote; no purchases or charges are enabled." />
