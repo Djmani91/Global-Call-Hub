@@ -27,6 +27,22 @@ test("Twilio Verify configuration rejects missing or malformed credentials", () 
     TWILIO_VERIFY_API_KEY_SECRET: config.apiKeySecret,
     TWILIO_VERIFY_SERVICE_SID: config.serviceSid,
   }), config);
+  assert.deepEqual(twilioVerifyConfig({
+    TWILIO_API_KEY_SID: config.apiKeySid,
+    TWILIO_API_KEY_SECRET: config.apiKeySecret,
+    TWILIO_VERIFY_SERVICE_SID: config.serviceSid,
+  }), config);
+  assert.deepEqual(twilioVerifyConfig({
+    TWILIO_API_KEY_SID: `SK${"3".repeat(32)}`,
+    TWILIO_API_KEY_SECRET: "existing-standard-key",
+    TWILIO_VERIFY_API_KEY_SID: config.apiKeySid,
+    TWILIO_VERIFY_API_KEY_SECRET: config.apiKeySecret,
+    TWILIO_VERIFY_SERVICE_SID: config.serviceSid,
+  }), {
+    ...config,
+    apiKeySid: `SK${"3".repeat(32)}`,
+    apiKeySecret: "existing-standard-key",
+  });
   assert.equal(twilioVerifyConfig({}), null);
   assert.equal(twilioVerifyConfig({
     TWILIO_VERIFY_API_KEY_SID: "ACnot-a-verify-key",

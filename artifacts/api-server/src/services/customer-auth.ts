@@ -20,8 +20,18 @@ export class VerifyProviderError extends Error {
 export function twilioVerifyConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): TwilioVerifyConfig | null {
-  const apiKeySid = env.TWILIO_VERIFY_API_KEY_SID?.trim();
-  const apiKeySecret = env.TWILIO_VERIFY_API_KEY_SECRET;
+  // Use the app's existing Standard key first so Verify does not require a
+  // duplicate pair of credentials. Keep the Verify-specific pair as a
+  // fallback for deployments that intentionally use a separate key.
+  const primaryKeySid = env.TWILIO_API_KEY_SID?.trim();
+  const primaryKeySecret = env.TWILIO_API_KEY_SECRET;
+  const verifyKeySid = env.TWILIO_VERIFY_API_KEY_SID?.trim();
+  const verifyKeySecret = env.TWILIO_VERIFY_API_KEY_SECRET;
+  const primaryKeyIsValid = Boolean(
+    primaryKeySid && /^SK[0-9a-f]{32}$/i.test(primaryKeySid) && primaryKeySecret,
+  );
+  const apiKeySid = primaryKeyIsValid ? primaryKeySid : verifyKeySid;
+  const apiKeySecret = primaryKeyIsValid ? primaryKeySecret : verifyKeySecret;
   const serviceSid = env.TWILIO_VERIFY_SERVICE_SID?.trim();
   if (
     !apiKeySid ||
