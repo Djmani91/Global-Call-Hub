@@ -48,6 +48,7 @@ function RootLayoutNav() {
       <Stack.Screen name="call" options={{ title: 'Call', presentation: 'modal', headerLeft: close }} />
       <Stack.Screen name="countries" options={{ title: 'Select country', presentation: 'modal', headerLeft: close }} />
       <Stack.Screen name="numbers/[country]" options={{ title: 'Sample numbers' }} />
+      <Stack.Screen name="numbers/plan" options={{ title: 'Get your Number' }} />
       <Stack.Screen name="number/[id]" options={{ title: 'Number details' }} />
       <Stack.Screen name="topup" options={{ title: 'Top up', presentation: 'modal', headerLeft: close }} />
       <Stack.Screen name="profile" options={{ title: 'Edit profile' }} />
