@@ -18,6 +18,7 @@ export default function Dialer() {
   return (
     <View style={{ flex: 1, backgroundColor: c.background, paddingBottom: Platform.OS === 'web' ? 34 : insets.bottom + 12 }}>
       <View style={styles.display}>
+        <Text testID="dialer-readiness" style={{ fontFamily: F.s, color: c.mutedForeground, fontSize: 13, textAlign: 'center', marginBottom: 12 }}>Calling unavailable in Expo Go</Text>
         <Text testID="dialer-number" numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: F.m, fontSize: 36, color: c.foreground, letterSpacing: 1 }}>{num || ' '}</Text>
         <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 14, marginTop: 6 }}>{match ? match.name : num ? 'Not in demo contacts' : 'Enter a number with country code'}</Text>
       </View>
@@ -32,7 +33,7 @@ export default function Dialer() {
       </View>
       <View style={styles.actions}>
         <View style={{ width: 64 }} />
-        <Press testID="dialer-call" disabled={num.length < 3} accessibilityLabel="Call" onPress={() => router.replace({ pathname: '/call', params: { number: num } })}
+        <Press testID="dialer-call" disabled={num.length < 3} accessibilityLabel="View calling requirements. No call will be placed." onPress={() => router.replace({ pathname: '/call', params: { number: num } })}
           style={[styles.call, { backgroundColor: c.primary, opacity: num.length < 3 ? 0.4 : 1 }]}>
           <Feather name="phone" size={28} color={c.primaryForeground} />
         </Press>

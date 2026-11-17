@@ -24,9 +24,15 @@ export default function CallScreen() {
       </View>
       <View style={[styles.card, { backgroundColor: c.card }]}>
         <View style={[styles.icon, { backgroundColor: c.accent }]}><Feather name="phone-off" size={22} color={c.primary} /></View>
-        <Text style={{ fontFamily: F.s, fontSize: 17, color: c.foreground }}>Calling is not connected yet</Text>
+        <Text style={{ fontFamily: F.s, fontSize: 17, color: c.foreground }}>Calling unavailable in this preview</Text>
         <Text style={{ fontFamily: F.r, fontSize: 14, lineHeight: 21, color: c.mutedForeground }}>
-          Linea will place calls through Twilio once your account is linked. This demo build cannot ring anyone, so no call has started and no time is being counted.
+          Expo Go cannot make or receive Twilio Voice calls, including in the background. No call has started and no time is being counted.
+        </Text>
+        <Text style={{ fontFamily: F.r, fontSize: 14, lineHeight: 21, color: c.mutedForeground }}>
+          Android and iPhone calling needs a supported installed build, secure customer sign-in, assigned numbers and platform push setup. These requirements are not yet verified.
+        </Text>
+        <Text style={{ fontFamily: F.r, fontSize: 14, lineHeight: 21, color: c.mutedForeground }}>
+          Future installed-app controls will include answer, decline, hang up, mute and audio routing. Ringing, connected and ended states will come from the call service, not a demo timer.
         </Text>
       </View>
       <Btn label="Note this call for later" icon="bookmark" testID="call-log" onPress={() => { logAttempt(number); router.back(); }} />

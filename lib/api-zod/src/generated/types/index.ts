@@ -21,3 +21,7 @@ export * from './twilioAvailablePhoneNumber';
 export * from './twilioAvailablePhoneNumberCapabilities';
 export * from './twilioCountryCode';
 export * from './twilioPhoneNumberType';
+export * from './voiceReadiness';
+export * from './voiceTokenInput';
+export * from './voiceTokenInputPlatform';
+export * from './voiceWebhookInput';

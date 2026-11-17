@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "k53bbLaEkqmndDspr0n8n"
+uri = "file://reports/mobile-calling-readiness.html"
+type = "html"
+title = "Android and iPhone calling readiness"
+description = "Completed server safeguards, read-only Twilio findings, native-build blockers, platform setup requirements and verification gaps."
+logical_id = "5ac83e18-50d5-48d1-bc78-7fa0133786e9"
+content_hash = "sha256:a732bccfe632a653bf6c8945f69949520165b203b0b18aa3469875cf1221e0d2"
+size = 12477
+mtime_ms = 1794873020582
+storage_uri = "gcs://replit-rams-assets-archer/rams/assets/repl:4dac282b-17dd-4ae1-a72f-6d113afcd5cb/5ac83e18-50d5-48d1-bc78-7fa0133786e9/5ed70546-cf28-4eff-a0a1-12cafff7fcb7"
+storage_version_token = "1794873043606086"
+content_type = "text/html"

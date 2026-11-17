@@ -5,6 +5,33 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface VoiceReadiness {
+  enabled: false;
+  expoGoSupported: false;
+  message: string;
+  blockers: string[];
+}
+
+export type VoiceTokenInputPlatform = typeof VoiceTokenInputPlatform[keyof typeof VoiceTokenInputPlatform];
+
+
+export const VoiceTokenInputPlatform = {
+  ios: 'ios',
+  android: 'android',
+} as const;
+
+export interface VoiceTokenInput {
+  platform: VoiceTokenInputPlatform;
+}
+
+export interface VoiceWebhookInput {
+  AccountSid: string;
+  CallSid: string;
+  From: string;
+  To: string;
+  [key: string]: unknown;
+}
+
 export type TwilioCountryCode = typeof TwilioCountryCode[keyof typeof TwilioCountryCode];
 
 

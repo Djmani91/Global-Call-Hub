@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Linea — Android and iPhone calling readiness</title>
+<style>
+body{font:16px/1.6 system-ui,sans-serif;color:#20242a;background:#f4f6f5;max-width:920px;margin:auto;padding:28px}
+main{background:white;padding:32px;border-radius:16px}h1{line-height:1.2}h2{margin-top:32px}a{color:#086342}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;vertical-align:top;padding:12px;border-bottom:1px solid #dce3df}
+.status{background:#fff3ce;padding:16px;border-radius:8px}code{overflow-wrap:anywhere}small{color:#505c55}
+</style>
+<main>
+<small>Readiness assessment · 16 November 2026 · Preparation only</small>
+<h1>Android and iPhone calling</h1>
+<p class="status"><strong>Live native calling is blocked, not delivered.</strong> The Expo preview remains available. No calls were placed, no numbers were bought, and no Twilio routing, push credentials or account settings were changed.</p>
+<h2>Build route and compatibility</h2>
+<p>Linea declares Expo 58, React Native 0.88.0 and React 19.3. Twilio Voice React Native SDK 1.8.1 is the latest stable release found in the current official changelog. SDK 1.8+ supports Expo through a native configuration plugin and supports React Native's New Architecture. The official exercised matrix covers Expo 52–57 and React Native through 0.86.3 via Expo; bare React Native 0.83.6 is also listed. <strong>Expo 58 / React Native 0.88 is outside that verified matrix</strong>, not proven incompatible.</p>
+<p>The provider-supported route is a custom installed native binary with the Twilio plugin/native wiring. Expo Go does not include that native code. Under this project's current Replit/Expo workflow constraints, a custom development build, prebuild and native project generation are not authorized. Replit's documented iOS Launch/TestFlight route does not establish Twilio compatibility for this SDK; Google Play publishing is not currently supported by Replit's documented flow. The connected Expo tools are not evidence that this project's native route is approved.</p>
+<p><strong>Required decision:</strong> establish an explicitly approved custom-native workflow that preserves this Expo Go preview, then validate Twilio's plugin against Expo 58 without a downgrade. Both Android and iPhone need actual build evidence. No SDK, native plugin, EAS configuration, native projects or native calling controls were installed.</p>
+<h2>Read-only Twilio findings</h2>
+<table>
+<tr><th>Check</th><th>Observed result</th></tr>
+<tr><td>Owned numbers</td><td>One number returned, voice-capable, ending 3733; inventory pagination was exhausted. It has an existing POST Voice URL and no attached TwiML application SID. Its existing routing was left untouched. Provider ownership does not establish any Linea customer's entitlement to it.</td></tr>
+<tr><td>Account type / trial</td><td>Account details inspection denied (HTTP 401, Twilio 8021). Trial vs paid and account status remain unverified. Account discovery through the connection also failed; this was not taken to mean the entire integration is absent.</td></tr>
+<tr><td>TwiML applications / verified callers</td><td>Both list requests denied (HTTP 401, Twilio 8021). An appropriate Voice application, verified recipient list and Voice permissions could not be confirmed.</td></tr>
+<tr><td>Push credentials</td><td>Notify Credentials list denied (HTTP 401, Twilio 8011). Existing Apple/FCM credentials cannot be verified. No platform push credential SIDs are configured for Linea.</td></tr>
+<tr><td>Signing key</td><td>Existing account SID and API key pair permit reading owned inventory. Voice token signing compatibility is unverified. Twilio says Main/Standard API keys support Access Tokens; Restricted API keys do not. Do not assume that an inventory-capable key can sign usable Voice tokens.</td></tr>
+<tr><td>Webhook verification</td><td>The account Auth Token and canonical Voice webhook origin are not configured. API key secrets are not substitutes for the account Auth Token.</td></tr>
+</table>
+<h2>Completed server foundations</h2>
+<ul>
+<li>Provisioned managed Clerk customer authentication and wired real session verification into Express. The Voice token route requires a verified customer session; local demo profile fields and client identity headers are not authentication.</li>
+<li>Added a persistent, server-owned number assignment table with a unique number key and revocation field, plus customer-filtered outgoing and number-filtered incoming resolution helpers. The development schema was applied successfully. No customer assignments were invented and no public assignment endpoint exists.</li>
+<li>Added a deterministic opaque Voice identity derived from the authenticated customer ID. Offline token preparation uses the official Twilio server helper, a five-minute TTL, an application grant and a platform push credential. It was tested with fixture keys only.</li>
+<li>The HTTP token endpoint <strong>does not issue tokens</strong>. It rejects identity/caller-ID overrides and returns 503 for valid authenticated requests. There is no environment switch that enables calling.</li>
+<li>Prepared form-encoded Twilio webhook verification using all supplied flat fields, the configured account Auth Token and canonical HTTPS origin. Host and forwarded-host headers cannot change the signed URL. Missing/forged signatures, account mismatch and non-form requests fail closed.</li>
+<li>Even valid signed callbacks return only Reject TwiML. There is no reachable Dial, Redirect, REST call creation or recording path. Replayed callbacks likewise cannot connect calls.</li>
+<li>Preserved the API specification/code-generation workflow and regenerated the client and validation schemas. Pricing behavior was not changed. Corrected the post-merge database package target so the additive schema can be applied after merge.</li>
+</ul>
+<p><strong>Important limits:</strong> server session authentication is implemented, but mobile sign-in/sign-up UI and session transport are not connected. Assignment helpers and offline signing are preparation components, not live end-to-end routing. No deployed webhook, production session, real token registration or phone call was verified.</p>
+<h2>Platform prerequisites</h2>
+<table>
+<tr><th>iPhone</th><th>Android</th></tr>
+<tr><td>Approved native build route; Apple developer signing; stable bundle ID; microphone permission; VoIP/audio background modes; PushKit registration and CallKit handling; Apple VoIP certificate/private key configured as a Twilio Push Credential. APNs environment and credential sandbox setting must match the installed build. A physical iPhone is required.</td><td>Approved native build route; stable package ID; Firebase project and matching Google Services configuration; current supported FCM credential in Twilio; native Firebase messaging integration and device registration; microphone/notification/Bluetooth permission handling as applicable; foreground call service and correct native notification actions.</td></tr>
+</table>
+<p>On both platforms, register only the authenticated customer's server-issued identity. Handle push token rotation and unregister the old identity on logout/account change. Reject stale invites and revoke number access safely. An Expo push token is not a Twilio Voice PushKit/FCM registration.</p>
+<h2>Trial-account restrictions</h2>
+<p>Because account type cannot be read, trial eligibility is unresolved. Current Twilio trial documentation limits calls to verified numbers and in-country calling, and describes restricted custom TwiML, including blocked Dial Number and Dial Client nouns. It also lists trial quotas and expiration. These restrictions can prevent this product's required international/PSTN-to-app flow. Confirm the actual account's trial program and upgrade requirements before approving any real-device call. No upgrade or verification call was initiated.</p>
+<h2>Required before enabling any calling</h2>
+<ol>
+<li>Approve and validate a compatible native build path for both platforms. Retain this preview; no downgrade or unsupported workaround.</li>
+<li>Connect mobile customer sign-in and secure session storage/transport. Do not use the demo profile or device-supplied identity.</li>
+<li>Verify Voice account permissions, account/trial status, supported signing key, customer number entitlement and regulatory eligibility.</li>
+<li>Through secure credential entry, configure the account Auth Token, Voice application SID and platform Push Credential SIDs. Set the canonical public HTTPS webhook origin only after its actual deployment URL is known. Do not paste credentials into chat or the mobile app.</li>
+<li>Obtain explicit approval before changing the existing number Voice URL or TwiML application routing. Proposed paths are <code>/api/voice/webhooks/incoming</code> and <code>/api/voice/webhooks/outgoing</code>; nothing was attached to them in Twilio.</li>
+<li>Implement atomic credit reservation/settlement, destination and premium/emergency/service-code restrictions, geographic restrictions, per-customer/global rate limits, concurrent-call limits, maximum duration, replay/idempotency handling, revocation and an operational kill switch before removing the code-level lock. Token TTL alone is not a spending cap.</li>
+<li>With explicit approval for any billable tests, verify answer, decline, hang up, mute, speaker/earpiece/Bluetooth routing, actual ringing/connection/disconnection, interrupted/failed calls, foreground/background/locked-screen delivery, cold starts within each OS's limits, logout isolation, expired tokens and push rotation on physical devices.</li>
+</ol>
+<h2>Verification evidence and gaps</h2>
+<ul>
+<li>Passed code generation and shared-library, API server and Linea TypeScript checks.</li>
+<li>Passed four local test groups covering ownership/identity isolation, five-minute token signing, canonical callback URLs, real Clerk RSA session verification, expired/forged session rejection, caller-ID override rejection, both platforms' disabled-token behavior, tampered/wrong-account callbacks and signed rejection-only TwiML. Fixture credentials only; no billable requests.</li>
+<li>Running API checks: readiness 200 with enabled=false; anonymous token 401; unsigned webhook 403. API and Expo workflows restarted and listening.</li>
+<li>Both iOS and Android JavaScript exports passed. These are not native builds and do not prove microphone, push or calling behavior.</li>
+<li>Browser preview screenshot confirmed the changed call screen renders and states that calling is unavailable, without a fake call timer. Physical Expo Go/device testing was not performed.</li>
+<li>Existing Expo compatibility advisories remain: React Native 0.88.0 vs recommended 0.88.1, safe-area-context 5.10.1 vs ~5.11.1, and React DOM types 19.2.7 vs ~19.3.0. The install also reports a missing Metro config peer. These were not changed because this task preserves the toolchain. JavaScript exports and typechecks passed despite these advisories; this is not a clean native compatibility certification.</li>
+<li>The existing API generator warns it defaults to React Query v4 because the installed version cannot be detected. Generated output typechecks; no calling UI uses a generated query in this release.</li>
+</ul>
+<h2>Sources</h2>
+<ul>
+<li><a href="https://github.com/twilio/twilio-voice-react-native">Twilio SDK README and exercised compatibility matrix</a></li>
+<li><a href="https://www.twilio.com/docs/voice/sdks/react-native/changelog">Twilio release notes</a> and <a href="https://github.com/twilio/twilio-voice-react-native/blob/main/docs/expo/app-config.md">Expo native setup</a></li>
+<li><a href="https://www.twilio.com/docs/iam/access-tokens">Access Tokens and supported key types</a> · <a href="https://www.twilio.com/docs/usage/security">Webhook validation</a></li>
+<li><a href="https://www.twilio.com/docs/usage/trials/try-out-voice">Current Voice trial restrictions</a></li>
+<li><a href="https://github.com/twilio/voice-quickstart-ios">iOS Voice quickstart</a> · <a href="https://github.com/twilio/voice-quickstart-android">Android Voice quickstart</a></li>
+<li><a href="https://docs.replit.com/features/artifact-types/building-mobile-apps">Replit mobile builds</a> · <a href="https://docs.replit.com/build/mobile-preview-testing">Preview testing</a></li>
+</ul>
+</main>
+</html>

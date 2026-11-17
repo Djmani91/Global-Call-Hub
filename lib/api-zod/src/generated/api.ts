@@ -9,6 +9,46 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Explain why mobile calling is disabled
+ */
+export const GetVoiceReadinessResponse = zod.object({
+  "enabled": zod.literal(false),
+  "expoGoSupported": zod.literal(false),
+  "message": zod.string(),
+  "blockers": zod.array(zod.string())
+})
+
+
+/**
+ * No live tokens are issued in this preparation release. Identity and caller ID can never be supplied by the client.
+ * @summary Reserved authenticated mobile token endpoint; issuance is locked
+ */
+export const CreateVoiceTokenBody = zod.object({
+  "platform": zod.enum(['ios', 'android'])
+})
+
+export const CreateVoiceTokenResponse = zod.void()
+
+
+/**
+ * Form-encoded POST only. Requires the configured canonical HTTPS URL and account Auth Token. Never returns Dial in this release.
+ * @summary Verify Twilio signature and reject calls while calling is disabled
+ */
+export const HandleVoiceWebhookParams = zod.object({
+  "direction": zod.enum(['incoming', 'outgoing'])
+})
+
+export const HandleVoiceWebhookBody = zod.object({
+  "AccountSid": zod.string(),
+  "CallSid": zod.string(),
+  "From": zod.string(),
+  "To": zod.string()
+})
+
+export const HandleVoiceWebhookResponse = zod.unknown()
+
+
+/**
  * @summary Read marked-up country prices in the customer's billing currency
  */
 export const GetTwilioPricingQueryParams = zod.object({

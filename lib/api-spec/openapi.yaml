@@ -13,6 +13,85 @@ tags:
   - name: twilio
     description: Read-only Twilio phone number inventory
 paths:
+  /voice/readiness:
+    get:
+      operationId: getVoiceReadiness
+      tags: [twilio]
+      summary: Explain why mobile calling is disabled
+      responses:
+        "200":
+          description: Public readiness information, without customer or account data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoiceReadiness"
+  /voice/token:
+    post:
+      operationId: createVoiceToken
+      tags: [twilio]
+      summary: Reserved authenticated mobile token endpoint; issuance is locked
+      description: No live tokens are issued in this preparation release. Identity and caller ID can never be supplied by the client.
+      security:
+        - customerSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoiceTokenInput"
+      responses:
+        "400":
+          description: Invalid platform or client-supplied identity/caller ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Valid customer session required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Calling intentionally disabled; no token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /voice/webhooks/{direction}:
+    post:
+      operationId: handleVoiceWebhook
+      tags: [twilio]
+      summary: Verify Twilio signature and reject calls while calling is disabled
+      description: Form-encoded POST only. Requires the configured canonical HTTPS URL and account Auth Token. Never returns Dial in this release.
+      parameters:
+        - name: direction
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [incoming, outgoing]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/VoiceWebhookInput"
+      responses:
+        "200":
+          description: Signed request for configured account rejected with TwiML; no call leg created
+          content:
+            application/xml:
+              schema:
+                type: string
+        "400":
+          description: Invalid callback
+        "403":
+          description: Missing or invalid signature or wrong account
+        "415":
+          description: Only form-encoded callbacks accepted
+        "503":
+          description: Webhook verification is not configured
   /twilio/pricing:
     get:
       operationId: getTwilioPricing
@@ -107,7 +186,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 components:
+  securitySchemes:
+    customerSession:
+      type: http
+      scheme: bearer
+      bearerFormat: Clerk session JWT
   schemas:
+    VoiceReadiness:
+      type: object
+      required: [enabled, expoGoSupported, message, blockers]
+      properties:
+        enabled:
+          type: boolean
+          enum: [false]
+        expoGoSupported:
+          type: boolean
+          enum: [false]
+        message:
+          type: string
+        blockers:
+          type: array
+          items:
+            type: string
+    VoiceTokenInput:
+      type: object
+      additionalProperties: false
+      required: [platform]
+      properties:
+        platform:
+          type: string
+          enum: [ios, android]
+    VoiceWebhookInput:
+      type: object
+      additionalProperties:
+        type: string
+      required: [AccountSid, CallSid, From, To]
+      properties:
+        AccountSid:
+          type: string
+        CallSid:
+          type: string
+        From:
+          type: string
+        To:
+          type: string
     CountryPricing:
       type: object
       required: [countryCode, billingCountry, currency, multiplier, fetchedAt, sections]

@@ -6,11 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
@@ -21,11 +25,14 @@ import type {
   GetTwilioAvailableNumbersParams,
   GetTwilioPricingParams,
   HealthStatus,
-  TwilioAvailableNumbersResponse
+  TwilioAvailableNumbersResponse,
+  VoiceReadiness,
+  VoiceTokenInput,
+  VoiceWebhookInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import type { ErrorType , BodyType } from '../custom-fetch';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -50,6 +57,267 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetVoiceReadinessUrl = () => {
+
+
+
+
+  return `/api/voice/readiness`
+}
+
+/**
+ * @summary Explain why mobile calling is disabled
+ */
+export const getVoiceReadiness = async ( options?: Parameters<typeof customFetch>[1]): Promise<VoiceReadiness> => {
+
+  return customFetch<VoiceReadiness>(getGetVoiceReadinessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetVoiceReadinessQueryKey = () => {
+    return [
+    `/api/voice/readiness`
+    ] as const;
+    }
+
+
+export const getGetVoiceReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getVoiceReadiness>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVoiceReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVoiceReadinessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVoiceReadiness>>> = ({ signal }) => getVoiceReadiness({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVoiceReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetVoiceReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getVoiceReadiness>>>
+export type GetVoiceReadinessQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Explain why mobile calling is disabled
+ */
+
+export function useGetVoiceReadiness<TData = Awaited<ReturnType<typeof getVoiceReadiness>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVoiceReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetVoiceReadinessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateVoiceTokenUrl = () => {
+
+
+
+
+  return `/api/voice/token`
+}
+
+/**
+ * No live tokens are issued in this preparation release. Identity and caller ID can never be supplied by the client.
+ * @summary Reserved authenticated mobile token endpoint; issuance is locked
+ */
+export const createVoiceToken = async (voiceTokenInput: VoiceTokenInput, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<unknown>(getCreateVoiceTokenUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(voiceTokenInput)
+  }
+);}
+
+
+
+
+
+export const getCreateVoiceTokenMutationKey = () => ['createVoiceToken'] as const;
+
+export const getCreateVoiceTokenMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVoiceToken>>, TError,CreateVoiceTokenMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createVoiceToken>>, TError,CreateVoiceTokenMutationVariables, TContext> => {
+
+const mutationKey = getCreateVoiceTokenMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createVoiceToken>>, CreateVoiceTokenMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createVoiceToken(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateVoiceTokenMutationResult = NonNullable<Awaited<ReturnType<typeof createVoiceToken>>>
+    export type CreateVoiceTokenMutationBody = BodyType<VoiceTokenInput>
+    export type CreateVoiceTokenMutationError = ErrorType<ApiError>
+    export type CreateVoiceTokenMutationVariables = {data: BodyType<VoiceTokenInput>}
+
+    /**
+ * @summary Reserved authenticated mobile token endpoint; issuance is locked
+ */
+export const useCreateVoiceToken = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVoiceToken>>, TError,CreateVoiceTokenMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createVoiceToken>>,
+        TError,
+        CreateVoiceTokenMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateVoiceTokenMutationOptions(options));
+    }
+
+export const getHandleVoiceWebhookUrl = (direction: 'incoming' | 'outgoing',) => {
+
+
+
+
+  return `/api/voice/webhooks/${direction}`
+}
+
+/**
+ * Form-encoded POST only. Requires the configured canonical HTTPS URL and account Auth Token. Never returns Dial in this release.
+ * @summary Verify Twilio signature and reject calls while calling is disabled
+ */
+export const handleVoiceWebhook = async (direction: 'incoming' | 'outgoing',
+    voiceWebhookInput: VoiceWebhookInput, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+    const formUrlEncoded = new URLSearchParams();
+formUrlEncoded.append(`AccountSid`, voiceWebhookInput.AccountSid);
+formUrlEncoded.append(`CallSid`, voiceWebhookInput.CallSid);
+formUrlEncoded.append(`From`, voiceWebhookInput.From);
+formUrlEncoded.append(`To`, voiceWebhookInput.To);
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<string>(getHandleVoiceWebhookUrl(direction),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...getHeaders(options?.headers) },
+    body: formUrlEncoded
+  }
+);}
+
+
+
+
+
+export const getHandleVoiceWebhookMutationKey = () => ['handleVoiceWebhook'] as const;
+
+export const getHandleVoiceWebhookMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof handleVoiceWebhook>>, TError,HandleVoiceWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof handleVoiceWebhook>>, TError,HandleVoiceWebhookMutationVariables, TContext> => {
+
+const mutationKey = getHandleVoiceWebhookMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof handleVoiceWebhook>>, HandleVoiceWebhookMutationVariables> = (props) => {
+          const {direction,data} = props ?? {};
+
+          return  handleVoiceWebhook(direction,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HandleVoiceWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof handleVoiceWebhook>>>
+    export type HandleVoiceWebhookMutationBody = BodyType<VoiceWebhookInput>
+    export type HandleVoiceWebhookMutationError = ErrorType<void>
+    export type HandleVoiceWebhookMutationVariables = {direction: 'incoming' | 'outgoing';data: BodyType<VoiceWebhookInput>}
+
+    /**
+ * @summary Verify Twilio signature and reject calls while calling is disabled
+ */
+export const useHandleVoiceWebhook = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof handleVoiceWebhook>>, TError,HandleVoiceWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof handleVoiceWebhook>>,
+        TError,
+        HandleVoiceWebhookMutationVariables,
+        TContext
+      > => {
+      return useMutation(getHandleVoiceWebhookMutationOptions(options));
+    }
 
 export const getGetTwilioPricingUrl = (params: GetTwilioPricingParams,) => {
   const normalizedParams = new URLSearchParams();
