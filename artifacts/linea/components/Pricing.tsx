@@ -40,35 +40,52 @@ export function PricingSummary({ pricing, numberType }: { pricing: CountryPricin
   </Text>;
 }
 
-const RATE_GROUPS = [
-  { id: 'rental', kind: 'numbers', direction: 'rental', title: 'Monthly number rental', unit: 'per month', hint: 'A separate monthly charge to keep your number.' },
-  { id: 'make-calls', kind: 'voice', direction: 'outgoing', title: 'Make calls', unit: 'per minute', hint: 'Calls to the selected country. Match the destination prefix and any origin restriction below.' },
-  { id: 'receive-calls', kind: 'voice', direction: 'incoming', title: 'Receive calls', unit: 'per minute', hint: 'Calls received on a number from the selected country. Match your number type below.' },
-  { id: 'send-sms', kind: 'sms', direction: 'outgoing', title: 'Send SMS', unit: 'per SMS segment', hint: 'SMS sent to the selected country. Match the destination network and sender number type below.' },
-  { id: 'receive-sms', kind: 'sms', direction: 'incoming', title: 'Receive SMS', unit: 'per SMS segment', hint: 'SMS received on a number from the selected country. Match your number type below.' },
+const SIMPLE_RATES = [
+  { id: 'make-calls', kind: 'voice', direction: 'outgoing', label: 'Make calls', unit: '/min' },
+  { id: 'receive-calls', kind: 'voice', direction: 'incoming', label: 'Receive calls', unit: '/min' },
+  { id: 'send-sms', kind: 'sms', direction: 'outgoing', label: 'Send SMS', unit: '/segment' },
+  { id: 'receive-sms', kind: 'sms', direction: 'incoming', label: 'Receive SMS', unit: '/segment' },
 ] as const;
+
+function priceRange(amounts: number[], currency: string, unit: string): string {
+  if (!amounts.length) return 'Unavailable';
+  const low = Math.min(...amounts);
+  const high = Math.max(...amounts);
+  const range = low === high
+    ? money(low, currency, true)
+    : `${money(low, currency, true)}–${money(high, currency, true)}`;
+  return `${range} ${unit}`;
+}
 
 function UsageOverview({ pricing }: { pricing: CountryPricing }) {
   const c = useColors();
+  const sectionFor = (kind: 'voice' | 'sms') => pricing.sections.find(section => section.kind === kind);
+  const amountFor = (id: string) => {
+    const group = SIMPLE_RATES.find(rate => rate.id === id)!;
+    const section = sectionFor(group.kind);
+    if (!section || section.error) return 'Unavailable';
+    return priceRange(section.rates.filter(rate => rate.direction === group.direction).map(rate => rate.amount), pricing.currency, group.unit);
+  };
+  const numberSection = pricing.sections.find(section => section.kind === 'numbers');
+  const rentals = numberSection && !numberSection.error
+    ? numberSection.rates.map(rate => `${rate.numberType}: ${money(rate.amount, pricing.currency)}/mo`)
+    : [];
+  const rentalText = rentals.length ? rentals.slice(0, 3).join(' · ') : 'Unavailable';
   return <View testID="usage-rates-overview" style={[styles.section, { backgroundColor: c.card }]}>
-    <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 18 }}>Call & SMS prices</Text>
-    <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 13 }}>
-      Published price ranges for the selected country. Your exact rate depends on number type, destination, origin and network; see the details below.
-    </Text>
-    {RATE_GROUPS.filter(group => group.direction !== 'rental').map(group => {
-      const section = pricing.sections.find(s => s.kind === group.kind);
-      const amounts = section?.rates.filter(rate => rate.direction === group.direction).map(rate => rate.amount) ?? [];
-      const low = Math.min(...amounts);
-      const high = Math.max(...amounts);
-      const price = !section || section.error || !amounts.length ? 'Rate unavailable'
-        : `${money(low, pricing.currency, true)}${low === high ? '' : ` – ${money(high, pricing.currency, true)}`} ${pricing.currency} ${group.unit}`;
-      return <View key={group.id} testID={`usage-summary-${group.id}`} style={[styles.rate, { borderTopColor: c.border }]}>
-        <Text style={{ fontFamily: F.s, color: c.foreground, fontSize: 15 }}>{group.title}</Text>
-        <Text style={{ fontFamily: F.b, color: c.primary, fontSize: 16 }}>{price}</Text>
-      </View>;
-    })}
-    <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 13 }}>
-      Monthly number rental is separate. Receiving calls or SMS is not automatically free or unlimited. Long SMS or some characters and emojis can require multiple segments. Call billing increments and minimum charges may apply.
+    {SIMPLE_RATES.map(group => (
+      <View key={group.id} testID={`usage-summary-${group.id}`} style={styles.simpleRate}>
+        <Text style={{ fontFamily: F.m, color: c.foreground, fontSize: 14 }}>{group.label}</Text>
+        <Text style={{ fontFamily: F.b, color: c.primary, fontSize: 14, textAlign: 'right', flexShrink: 1 }}>
+          {amountFor(group.id)}
+        </Text>
+      </View>
+    ))}
+    <View testID="usage-summary-rental" style={[styles.simpleRental, { borderTopColor: c.border }]}>
+      <Text style={{ fontFamily: F.m, color: c.foreground, fontSize: 13 }}>Number rental / month</Text>
+      <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12, textAlign: 'right', flex: 1 }}>{rentalText}</Text>
+    </View>
+    <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12 }}>
+      Prices include 3× markup. Calls are per minute; SMS is per segment. Actual rates vary by destination.
     </Text>
   </View>;
 }
@@ -77,7 +94,6 @@ export function PricingDetails({ initialCountry = 'US' }: { initialCountry?: str
   const c = useColors();
   const { profile, ready } = useApp();
   const [country, setCountry] = useState(initialCountry as TwilioCountryCode);
-  const [expanded, setExpanded] = useState<string[]>([]);
   const params = { countryCode: country, billingCountry: profile.billingCountry as TwilioCountryCode };
   const query = useGetTwilioPricing(params, { query: {
     queryKey: getGetTwilioPricingQueryKey(params), enabled: ready, staleTime: 60_000, retry: false,
@@ -85,9 +101,9 @@ export function PricingDetails({ initialCountry = 'US' }: { initialCountry?: str
   const data = query.data;
   return <View style={{ gap: 12 }}>
     <Text style={{ fontFamily: F.b, fontSize: 21, color: c.foreground }}>Country rates</Text>
-    <Text style={{ fontFamily: F.r, fontSize: 14, color: c.mutedForeground }}>Choose the number country for rental/incoming rates, or the destination for outgoing calls and SMS.</Text>
+    <Text style={{ fontFamily: F.r, fontSize: 14, color: c.mutedForeground }}>Select a country to see its basic rates.</Text>
     <View style={styles.chips}>{COUNTRIES.map(ct => <Press key={ct.code}
-      testID={`rates-country-${ct.code}`} onPress={() => { setCountry(ct.code as TwilioCountryCode); setExpanded([]); }}
+      testID={`rates-country-${ct.code}`} onPress={() => setCountry(ct.code as TwilioCountryCode)}
       accessibilityRole="radio" accessibilityState={{ selected: country === ct.code }}
       style={[styles.chip, { backgroundColor: country === ct.code ? c.accent : c.card, borderColor: country === ct.code ? c.primary : c.border }]}>
       <CountryMark country={ct} size={22} />
@@ -98,37 +114,10 @@ export function PricingDetails({ initialCountry = 'US' }: { initialCountry?: str
     </Text>
     <Btn label="Change billing country" testID="rates-change-billing" kind="ghost" onPress={() => router.push('/settings/billing')} />
     {data && !query.isError ? <UsageOverview pricing={data} /> : null}
-    <DemoNote text="Linea rates = current Twilio cost × 3, converted on the server. Rental is rounded to 2 decimals; usage to 6, so small charges are not shown as free. Taxes, carrier surcharges, registration and other fees are not included." />
     {query.isLoading || !ready ? <ActivityIndicator color={c.primary} /> : query.isError ?
       <Text style={{ fontFamily: F.r, color: c.destructive }}>{query.error instanceof Error ? query.error.message : 'Unable to load pricing.'}</Text> :
-      data ? RATE_GROUPS.map(group => {
-        const section = data.sections.find(s => s.kind === group.kind);
-        const matchingRates = section?.rates.filter(rate => rate.direction === group.direction) ?? [];
-        const open = expanded.includes(group.id);
-        const rates = open ? matchingRates : matchingRates.slice(0, 3);
-        return <View key={group.id} testID={`pricing-group-${group.id}`} style={[styles.section, { backgroundColor: c.card }]}>
-          <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 18 }}>{group.title} · {group.unit}</Text>
-          <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 13 }}>{group.hint}</Text>
-          {!section || section.error ? <Text testID={`pricing-error-${group.id}`} style={{ fontFamily: F.r, color: c.destructive, fontSize: 14, lineHeight: 21 }}>{section?.error ?? 'Rates unavailable. Please refresh.'}</Text> :
-            !matchingRates.length ? <Text style={{ fontFamily: F.r, color: c.mutedForeground }}>No rates published for this country.</Text> : <>
-              <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12 }}>
-                {section.sourceCurrency} → {data.currency} · rate {section.exchangeRate}
-                {section.exchangeDate ? ` · Frankfurter reference ${section.exchangeDate}` : ' · no conversion needed'}
-              </Text>
-              {rates.map((rate, index) => <View key={index} style={[styles.rate, { borderTopColor: c.border }]}>
-                <Text style={{ fontFamily: F.m, color: c.foreground, fontSize: 14 }}>{rate.label}</Text>
-                {rate.prefixes.length ? <Text numberOfLines={open ? undefined : 2} style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12 }}>Destination prefixes: {rate.prefixes.join(', ')}</Text> : null}
-                <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 16 }}>{money(rate.amount, data.currency, rate.unit !== 'month')} {data.currency} {group.unit}</Text>
-              </View>)}
-              {matchingRates.length > 3 ? <Btn label={open ? 'Show fewer rates' : `Show all ${matchingRates.length} rates`}
-                kind="ghost" testID={`pricing-expand-${group.id}`}
-                onPress={() => setExpanded(open ? expanded.filter(k => k !== group.id) : [...expanded, group.id])} /> : null}
-            </>}
-        </View>;
-      }) : null}
+      null}
     <Btn label="Refresh rates" icon="refresh-cw" testID="pricing-refresh" kind="ghost" onPress={() => query.refetch()} />
-    {data ? <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12 }}>Checked {new Date(data.fetchedAt).toLocaleString()}. Quotes may be cached for 5 minutes.</Text> : null}
-    <DemoNote text="Outgoing rates vary by destination prefix, origin and carrier. SMS is charged per segment, not necessarily per message. This is not a final checkout quote; no purchases or charges are enabled." />
   </View>;
 }
 
@@ -137,4 +126,6 @@ const styles = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderRadius: 11, paddingHorizontal: 10, paddingVertical: 9 },
   section: { padding: 16, borderRadius: 14, gap: 12 },
   rate: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, gap: 5 },
+  simpleRate: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  simpleRental: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10, marginTop: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
 });
