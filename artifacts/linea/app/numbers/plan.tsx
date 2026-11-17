@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import {
   getGetTwilioAvailableNumberCountriesQueryKey,
@@ -11,7 +11,7 @@ import type { BillingCountryCode, CountryPricing, TwilioPhoneNumberType } from '
 import { useApp } from '@/context/AppContext';
 import { countryFromTwilio, findCountry } from '@/data/demo';
 import { useColors } from '@/hooks/useColors';
-import { Btn, CountryMark, EmptyState, F, Press, useBottomPad } from '@/components/ui';
+import { Btn, CountryMark, EmptyState, F, useBottomPad } from '@/components/ui';
 import { CURRENCIES, money } from '@/utils/currency';
 
 const PLANS = [
@@ -71,6 +71,11 @@ export default function NumberPlan() {
     retry: false,
   } });
   const pricing = pricingQuery.data;
+  const rateText = (kind: 'voice' | 'sms', direction: 'incoming' | 'outgoing') => {
+    if (kind === 'voice' && params.voice === 'false') return 'Not supported';
+    if (pricingQuery.isError) return 'Unavailable';
+    return usageRate(pricing, kind, direction, numberType);
+  };
   const monthly = rentalRate(pricing, numberType);
   const plan = PLANS.find(item => item.months === selectedTerm)!;
   const standardTotal = monthly === undefined ? undefined : Math.round(monthly * selectedTerm * 100) / 100;
@@ -107,25 +112,25 @@ export default function NumberPlan() {
           <View style={[styles.feature, { borderBottomColor: c.border }]}>
             <Text style={{ fontFamily: F.s, color: c.foreground, fontSize: 14 }}>Make calls</Text>
             <Text style={{ fontFamily: F.b, color: c.primary, fontSize: 13 }}>
-              {usageRate(pricing, 'voice', 'outgoing', numberType)}
+              {rateText('voice', 'outgoing')}
             </Text>
           </View>
           <View style={[styles.feature, { borderBottomColor: c.border }]}>
             <Text style={{ fontFamily: F.s, color: c.foreground, fontSize: 14 }}>Receive calls</Text>
             <Text style={{ fontFamily: F.b, color: c.primary, fontSize: 13 }}>
-              {usageRate(pricing, 'voice', 'incoming', numberType)}
+              {rateText('voice', 'incoming')}
             </Text>
           </View>
           <View style={[styles.feature, { borderBottomColor: c.border }]}>
             <Text style={{ fontFamily: F.s, color: c.foreground, fontSize: 14 }}>Send SMS</Text>
             <Text style={{ fontFamily: F.b, color: c.primary, fontSize: 13 }}>
-              {usageRate(pricing, 'sms', 'outgoing', numberType)}
+              {rateText('sms', 'outgoing')}
             </Text>
           </View>
           <View style={[styles.feature, { borderBottomColor: c.border }]}>
             <Text style={{ fontFamily: F.s, color: c.foreground, fontSize: 14 }}>Receive SMS</Text>
             <Text style={{ fontFamily: F.b, color: c.primary, fontSize: 13 }}>
-              {usageRate(pricing, 'sms', 'incoming', numberType)}
+              {rateText('sms', 'incoming')}
             </Text>
           </View>
           <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12, lineHeight: 17 }}>
@@ -143,7 +148,7 @@ export default function NumberPlan() {
               const totalBeforeDiscount = monthly === undefined ? undefined : Math.round(monthly * item.months * 100) / 100;
               const total = totalBeforeDiscount === undefined ? undefined : Math.round(totalBeforeDiscount * (100 - item.discount)) / 100;
               return (
-                <Press
+                <Pressable
                   key={item.months}
                   testID={`number-term-${item.months}`}
                   accessibilityRole="radio"
@@ -161,7 +166,7 @@ export default function NumberPlan() {
                   <Text style={{ fontFamily: F.m, color: c.primary, fontSize: 10, marginTop: 3 }}>
                     {item.discount > 0 ? `Save ${item.discount}%` : 'Monthly'}
                   </Text>
-                </Press>
+                </Pressable>
               );
             })}
           </View>

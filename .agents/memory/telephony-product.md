@@ -21,6 +21,12 @@ Linea's retail rates are three times the current Twilio cost, including monthly 
 
 **How to apply:** Keep the pricing policy server-side. Do not substitute sample prices when provider permissions or conversion data are unavailable. Credit packs are a separate product decision, not a Twilio rate.
 
+Number rental terms are 1, 3 and 12 months, paid upfront and renewing for the same selected term. The user approved screenshot discounts of 52% for 3 months and 70% for 12 months, accepting that the latter is below Twilio rental cost when applied to the 3× monthly retail price.
+
+**Why:** The user explicitly approved the screenshot discounts after the below-cost implication was explained.
+
+**How to apply:** Do not silently replace these discounts with the default 3× policy. Selecting a number must open a separate “Get your Number” screen with term options and basic call/SMS rates, not expand a card inside the number results. The user corrected this distinction explicitly.
+
 The user wants Google Play in-app purchases for Android billing first.
 
 **Why:** The user explicitly requested Android purchases through Google in-app billing.
