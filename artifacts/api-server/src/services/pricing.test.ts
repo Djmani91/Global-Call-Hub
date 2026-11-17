@@ -62,19 +62,21 @@ test("pricing API handles conversion, cache isolation, partial permissions and m
   assert(address && typeof address === "object");
   const base = `http://127.0.0.1:${address.port}`;
   const realFetch = globalThis.fetch;
-  const previousSid = process.env.TWILIO_API_KEY_SID;
-  const previousSecret = process.env.TWILIO_API_KEY_SECRET;
+  const previousSid = process.env.TWILIO_PRICING_API_KEY_SID;
+  const previousSecret = process.env.TWILIO_PRICING_API_KEY_SECRET;
   // Synthetic values only, never real credentials in test output.
-  process.env.TWILIO_API_KEY_SID = "test-key";
-  process.env.TWILIO_API_KEY_SECRET = "test-secret";
+  process.env.TWILIO_PRICING_API_KEY_SID = "test-pricing-key";
+  process.env.TWILIO_PRICING_API_KEY_SECRET = "test-pricing-secret";
   const requests: string[] = [];
-  globalThis.fetch = async (input) => {
+  globalThis.fetch = async (input, init) => {
     const url = String(input);
     requests.push(url);
     if (url.includes("frankfurter")) {
       if (url.endsWith("/MXN")) throw new Error("offline");
       return Response.json({ base: "USD", quote: "GBP", rate: 0.8, date: new Date().toISOString().slice(0, 10) });
     }
+    assert.equal(new Headers(init?.headers).get("Authorization"),
+      `Basic ${Buffer.from("test-pricing-key:test-pricing-secret").toString("base64")}`);
     const country = url.split("/").at(-1)!;
     const kind = url.includes("PhoneNumbers") ? "numbers" : url.includes("Voice") ? "voice" : "sms";
     if (country === "FR" && kind === "voice") return Response.json({ code: 8011 }, { status: 401 });
@@ -103,7 +105,7 @@ test("pricing API handles conversion, cache isolation, partial permissions and m
     assert.equal(partial.sections[0].rates.length, 2);
     for (const section of partial.sections.slice(1)) {
       assert(section.error);
-      assert.match(section.error, /permission is missing/);
+      assert.match(section.error, section.kind === "voice" ? /access is unavailable.*8011/ : /permission is missing/);
       assert.deepEqual(section.rates, []);
     }
     const failedFx = GetTwilioPricingResponse.parse(await (await get("CA", "MX")).json());
@@ -117,10 +119,16 @@ test("pricing API handles conversion, cache isolation, partial permissions and m
     assert.equal((await get("US", "ZZ")).status, 400);
     assert.equal((await realFetch(`${base}/twilio/pricing?countryCode=US`)).status, 400);
     assert.deepEqual(await exchangeRate("USD", "USD"), { rate: 1, date: null });
+    delete process.env.TWILIO_PRICING_API_KEY_SECRET;
+    const unconfigured = GetTwilioPricingResponse.parse(await (await get("AU", "US")).json());
+    for (const section of unconfigured.sections) {
+      assert.match(section.error ?? "", /pricing credentials are not configured/);
+      assert.deepEqual(section.rates, []);
+    }
   } finally {
     globalThis.fetch = realFetch;
-    if (previousSid === undefined) delete process.env.TWILIO_API_KEY_SID; else process.env.TWILIO_API_KEY_SID = previousSid;
-    if (previousSecret === undefined) delete process.env.TWILIO_API_KEY_SECRET; else process.env.TWILIO_API_KEY_SECRET = previousSecret;
+    if (previousSid === undefined) delete process.env.TWILIO_PRICING_API_KEY_SID; else process.env.TWILIO_PRICING_API_KEY_SID = previousSid;
+    if (previousSecret === undefined) delete process.env.TWILIO_PRICING_API_KEY_SECRET; else process.env.TWILIO_PRICING_API_KEY_SECRET = previousSecret;
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 });

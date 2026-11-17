@@ -38,3 +38,9 @@ Build the Android in-app purchase integration now, but the user will configure G
 **Why:** The user explicitly deferred Google Console setup until after app upload.
 
 **How to apply:** Do not require Google Play Console setup before implementing independently feasible app and server integration. Keep unavailable store products and checkout explicitly disabled; distinguish preview testing from real Google Play purchase verification.
+
+The user approved a separate Standard Twilio API key for server-side pricing only, while retaining the restricted key for other operations.
+
+**Why:** The restricted key repeatedly failed pricing requests, and the user agreed to the Standard key's broader access specifically for this diagnostic and pricing use.
+
+**How to apply:** Preserve that separation. Approval to read prices with the broader key is not approval to use it for number orders, calls, messages or client-side access.

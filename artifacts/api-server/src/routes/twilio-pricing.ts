@@ -18,8 +18,10 @@ router.get("/twilio/pricing", async (req, res): Promise<void> => {
   const key = `${countryCode}:${billingCountry}`;
   const cached = cache.get(key);
   if (cached && cached.expires > Date.now()) { res.json(cached.response); return; }
-  const sid = process.env.TWILIO_API_KEY_SID?.trim();
-  const secret = process.env.TWILIO_API_KEY_SECRET?.trim();
+  // Pricing has its own server-only credential pair. Never broaden the key
+  // used by inventory/calling, or mix a SID and secret from different keys.
+  const sid = process.env.TWILIO_PRICING_API_KEY_SID?.trim();
+  const secret = process.env.TWILIO_PRICING_API_KEY_SECRET?.trim();
   const sections = await Promise.all((Object.keys(resources) as Array<keyof typeof resources>).map(async kind => {
     const empty = { kind, error: null as string | null, sourceCurrency: null as string | null,
       exchangeRate: null as number | null, exchangeDate: null as string | null, rates: [] as unknown[] };
@@ -31,8 +33,11 @@ router.get("/twilio/pricing", async (req, res): Promise<void> => {
       });
       const body = await upstream.json() as Record<string, unknown>;
       if (!upstream.ok) {
-        if (body.code === 8011 || body.code === 8021 || upstream.status === 403) {
-          throw new Error(`Twilio ${names[kind]} pricing permission is missing. Enable pricing Read access on the server's restricted API key.`);
+        if (body.code === 8011) {
+          throw new Error(`Twilio ${names[kind]} pricing access is unavailable with the configured pricing key (Twilio 8011). Check the key's access to this endpoint.`);
+        }
+        if (body.code === 8021 || upstream.status === 403) {
+          throw new Error(`Twilio ${names[kind]} pricing permission is missing on the server's dedicated pricing key.`);
         }
         if (upstream.status === 401) throw new Error("Twilio rejected the pricing credentials. Check the configured key.");
         if (upstream.status === 404) throw new Error(`Twilio does not provide ${names[kind]} pricing for this country.`);
