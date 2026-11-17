@@ -113,6 +113,9 @@ router.get("/twilio/available-numbers", async (req, res): Promise<void> => {
     `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/AvailablePhoneNumbers/${countryCode}/${resource}.json`,
   );
   url.searchParams.set("PageSize", "20");
+  // This app offers numbers for messaging, so never show voice-only inventory
+  // as a messaging option. Twilio still returns the actual capability flags.
+  url.searchParams.set("SmsEnabled", "true");
   if (search) {
     const isNorthAmericanAreaCode =
       (countryCode === "US" || countryCode === "CA") &&

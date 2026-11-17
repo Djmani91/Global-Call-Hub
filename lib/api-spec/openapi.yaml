@@ -206,7 +206,7 @@ paths:
       operationId: getTwilioAvailableNumbers
       tags: [twilio]
       summary: Search live available phone numbers
-      description: Searches Twilio inventory for a supported country. This endpoint never purchases a number.
+      description: Searches Twilio inventory for an account-supported country and type, returning only numbers Twilio marks SMS-enabled. Capabilities are returned per number. This endpoint never purchases a number.
       parameters:
         - name: countryCode
           in: query
@@ -229,7 +229,7 @@ paths:
             pattern: "^[0-9]{2,16}$"
       responses:
         "200":
-          description: Live available phone numbers
+          description: Live available SMS-capable phone numbers
           content:
             application/json:
               schema:

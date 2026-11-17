@@ -33,7 +33,7 @@ export default function Countries() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: bottom }}
         ListEmptyComponent={countriesQuery.isLoading || countriesQuery.isError ? undefined : <EmptyState icon="globe" title="No country found" body="No matching country currently appears in your Twilio number catalog." />}
-        ListFooterComponent={<Text style={[styles.foot, { color: c.mutedForeground }]}>Showing countries currently listed in your Twilio account. Capabilities and regulatory requirements vary by number.</Text>}
+        ListFooterComponent={<Text style={[styles.foot, { color: c.mutedForeground }]}>Showing countries currently listed in your Twilio account. The next screen shows only SMS-capable numbers; availability and requirements vary.</Text>}
         renderItem={({ item }) => (
           <Press testID={`country-${item.code}`} scale={0.985} onPress={() => router.push(`/numbers/${item.code}`)} style={[styles.row, { borderBottomColor: c.border }]}>
             <CountryMark country={item} />

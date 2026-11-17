@@ -36,7 +36,7 @@ export default function CountryNumbers() {
   } });
   const countryEntry = countriesQuery.data?.countries.find(item => item.countryCode === country);
   const ct = countryEntry ? countryFromTwilio(countryEntry) : findCountry(country);
-  const [phoneNumberType, setPhoneNumberType] = useState<TwilioPhoneNumberType>('local');
+  const [phoneNumberType, setPhoneNumberType] = useState<TwilioPhoneNumberType>('mobile');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
@@ -293,10 +293,10 @@ export default function CountryNumbers() {
       ) : (
         <EmptyState
           icon="phone"
-          title="No numbers returned"
+          title="No SMS-capable numbers returned"
           body={requestSearch
-            ? `Twilio found no ${activeType} numbers matching ${requestSearch} in ${ct.name}. Try different digits or another number type.`
-            : `Twilio did not return ${activeType} numbers for ${ct.name} in this search. Try another number type or country.`}
+            ? `Twilio found no SMS-capable ${activeType} numbers matching ${requestSearch} in ${ct.name}. Try different digits or another number type.`
+            : `Twilio did not return SMS-capable ${activeType} numbers for ${ct.name}. Try another number type or country.`}
         />
       )}
 
