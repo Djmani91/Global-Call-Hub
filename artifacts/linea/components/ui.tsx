@@ -121,13 +121,14 @@ export function Avatar({ name, hue, size = 46, badge }: { name: string; hue?: st
 }
 
 export function CountryMark({ country, size = 34 }: { country: Country; size?: number }) {
-  const h = size * 0.7;
+  const flag = /^[A-Za-z]{2}$/.test(country.code)
+    ? Array.from(country.code.toUpperCase(), letter => String.fromCodePoint(127397 + letter.charCodeAt(0))).join('')
+    : '🌐';
   return (
-    <View style={{ width: size, height: h, borderRadius: 5, overflow: 'hidden', flexDirection: country.vertical ? 'row' : 'column' }} accessibilityLabel={`${country.name} mark`}>
-      {country.stripes.map((col, i) => <View key={i} style={{ flex: 1, backgroundColor: col }} />)}
-      <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-        <Text style={{ fontFamily: F.b, fontSize: size * 0.3, color: '#16171A', backgroundColor: 'rgba(244,241,234,0.82)', paddingHorizontal: 3, borderRadius: 3, overflow: 'hidden' }}>{country.code}</Text>
-      </View>
+    <View style={{ width: size, height: size * 0.75, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={`${country.name} flag`}>
+      <Text accessible={false} allowFontScaling={false} style={{ fontSize: size * 0.76, lineHeight: size * 0.8 }}>
+        {flag}
+      </Text>
     </View>
   );
 }
