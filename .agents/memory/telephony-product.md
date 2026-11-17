@@ -56,3 +56,9 @@ The user approved a separate Standard Twilio API key for server-side pricing onl
 **Why:** The restricted key repeatedly failed pricing requests, and the user agreed to the Standard key's broader access specifically for this diagnostic and pricing use.
 
 **How to apply:** Preserve that separation. Approval to read prices with the broader key is not approval to use it for number orders, calls, messages or client-side access.
+
+New-customer onboarding must collect a country-code phone number, verify it through Twilio SMS, then verify an email address, then ask for the customer's name. The requested admin area manages customers and verification status.
+
+**Why:** The user specified this order and explicitly limited the admin scope to “Customers and verification status.”
+
+**How to apply:** Do not substitute email-first onboarding or expand admin scope to numbers or credit management without agreement. Keep proof of verification server-side.
