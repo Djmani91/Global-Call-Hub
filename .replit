@@ -18,3 +18,13 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+EXPO_PUBLIC_LINEA_BILLING_MODE = "test"
+EXPO_PUBLIC_REVENUECAT_TEST_API_KEY = "test_AuxyjKkWCQQSkbFgfSkpLPGpCqg"
+LINEA_CREDIT_CURRENCY = "GBP"
+REVENUECAT_CREDIT_OFFERING_ID = "ofrng48b3b00ab9"
+REVENUECAT_PROJECT_ID = "projc3a3e41c"
+REVENUECAT_TEST_STORE_APP_ID = "appc1fc6d1596"

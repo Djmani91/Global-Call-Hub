@@ -13,6 +13,73 @@ tags:
   - name: twilio
     description: Read-only Twilio phone number inventory
 paths:
+  /billing/readiness:
+    get:
+      operationId: getBillingReadiness
+      tags: [billing]
+      responses:
+        "200":
+          description: Safe public billing configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingReadiness"
+  /billing/wallet:
+    get:
+      operationId: getCreditWallet
+      tags: [billing]
+      security: [{customerSession: []}]
+      responses:
+        "200":
+          description: Authenticated customer's fixed-currency wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditWallet"
+        "401":
+          description: Sign-in required
+        "503":
+          description: Wallet unavailable
+  /billing/reconcile:
+    post:
+      operationId: reconcileCreditWallet
+      tags: [billing]
+      security: [{customerSession: []}]
+      description: Reads provider-verified purchases for the session customer. No client purchase IDs, amounts or identities accepted.
+      responses:
+        "200":
+          description: Reconciled wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditWallet"
+        "400":
+          description: No input accepted
+        "401":
+          description: Sign-in required
+        "503":
+          description: Provider verification unavailable
+  /billing/webhook:
+    post:
+      operationId: handleCreditWebhook
+      tags: [billing]
+      description: RevenueCat authorization header required. Event data never grants credit; it triggers an authoritative server reconciliation.
+      security: [{revenueCatWebhook: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditWebhookInput"
+      responses:
+        "204":
+          description: Processed or irrelevant event
+        "400":
+          description: Invalid event
+        "403":
+          description: Invalid authorization
+        "503":
+          description: Verification unavailable; retry required
   /voice/readiness:
     get:
       operationId: getVoiceReadiness
@@ -187,11 +254,57 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 components:
   securitySchemes:
+    revenueCatWebhook:
+      type: apiKey
+      in: header
+      name: Authorization
     customerSession:
       type: http
       scheme: bearer
       bearerFormat: Clerk session JWT
   schemas:
+    BillingReadiness:
+      type: object
+      required: [productionEnabled, testEnabled, currency, message]
+      properties:
+        productionEnabled: {type: boolean}
+        testEnabled: {type: boolean}
+        currency: {type: string, enum: [GBP]}
+        message: {type: string}
+    CreditWallet:
+      type: object
+      required: [customerId, currency, balanceMinor, testBalanceMinor, transactions]
+      properties:
+        customerId: {type: string}
+        currency: {type: string, enum: [GBP]}
+        balanceMinor: {type: integer}
+        testBalanceMinor: {type: integer}
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreditTransaction"
+    CreditTransaction:
+      type: object
+      required: [id, amountMinor, environment, kind, createdAt]
+      properties:
+        id: {type: string}
+        amountMinor: {type: integer}
+        environment: {type: string, enum: [production, sandbox]}
+        kind: {type: string, enum: [purchase, refund]}
+        createdAt: {type: string}
+    CreditWebhookInput:
+      type: object
+      required: [event]
+      properties:
+        event:
+          type: object
+          required: [id, type]
+          properties:
+            id: {type: string, minLength: 1, maxLength: 255}
+            type: {type: string}
+            app_user_id: {type: string, maxLength: 255}
+            app_id: {type: string}
+            environment: {type: string, enum: [SANDBOX, PRODUCTION]}
     VoiceReadiness:
       type: object
       required: [enabled, expoGoSupported, message, blockers]

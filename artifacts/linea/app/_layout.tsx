@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppProvider } from '@/context/AppContext';
+import { BillingProvider } from '@/context/BillingContext';
 import colors from '@/constants/colors';
 import { setBaseUrl } from '@workspace/api-client-react';
 
@@ -66,12 +67,14 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AppProvider>
+            <BillingProvider>
             <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.background }}>
               <KeyboardProvider>
                 <StatusBar style="light" />
                 <RootLayoutNav />
               </KeyboardProvider>
             </GestureHandlerRootView>
+            </BillingProvider>
           </AppProvider>
         </QueryClientProvider>
       </ErrorBoundary>

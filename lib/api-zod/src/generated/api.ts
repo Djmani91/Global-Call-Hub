@@ -8,6 +8,69 @@
 import * as zod from 'zod';
 
 
+export const GetBillingReadinessResponse = zod.object({
+  "productionEnabled": zod.boolean(),
+  "testEnabled": zod.boolean(),
+  "currency": zod.enum(['GBP']),
+  "message": zod.string()
+})
+
+
+export const GetCreditWalletResponse = zod.object({
+  "customerId": zod.string(),
+  "currency": zod.enum(['GBP']),
+  "balanceMinor": zod.number().int(),
+  "testBalanceMinor": zod.number().int(),
+  "transactions": zod.array(zod.object({
+  "id": zod.string(),
+  "amountMinor": zod.number().int(),
+  "environment": zod.enum(['production', 'sandbox']),
+  "kind": zod.enum(['purchase', 'refund']),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * Reads provider-verified purchases for the session customer. No client purchase IDs, amounts or identities accepted.
+ */
+export const ReconcileCreditWalletResponse = zod.object({
+  "customerId": zod.string(),
+  "currency": zod.enum(['GBP']),
+  "balanceMinor": zod.number().int(),
+  "testBalanceMinor": zod.number().int(),
+  "transactions": zod.array(zod.object({
+  "id": zod.string(),
+  "amountMinor": zod.number().int(),
+  "environment": zod.enum(['production', 'sandbox']),
+  "kind": zod.enum(['purchase', 'refund']),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * RevenueCat authorization header required. Event data never grants credit; it triggers an authoritative server reconciliation.
+ */
+export const handleCreditWebhookBodyEventIdMax = 255;
+
+export const handleCreditWebhookBodyEventAppUserIdMax = 255;
+
+
+
+export const HandleCreditWebhookBody = zod.object({
+  "event": zod.object({
+  "id": zod.string().min(1).max(handleCreditWebhookBodyEventIdMax),
+  "type": zod.string(),
+  "app_user_id": zod.string().max(handleCreditWebhookBodyEventAppUserIdMax).optional(),
+  "app_id": zod.string().optional(),
+  "environment": zod.enum(['SANDBOX', 'PRODUCTION']).optional()
+})
+})
+
+export const HandleCreditWebhookResponse = zod.void()
+
+
 /**
  * @summary Explain why mobile calling is disabled
  */

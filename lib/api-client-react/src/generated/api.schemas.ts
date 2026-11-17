@@ -5,6 +5,84 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type BillingReadinessCurrency = typeof BillingReadinessCurrency[keyof typeof BillingReadinessCurrency];
+
+
+export const BillingReadinessCurrency = {
+  GBP: 'GBP',
+} as const;
+
+export interface BillingReadiness {
+  productionEnabled: boolean;
+  testEnabled: boolean;
+  currency: BillingReadinessCurrency;
+  message: string;
+}
+
+export type CreditWalletCurrency = typeof CreditWalletCurrency[keyof typeof CreditWalletCurrency];
+
+
+export const CreditWalletCurrency = {
+  GBP: 'GBP',
+} as const;
+
+export type CreditTransactionEnvironment = typeof CreditTransactionEnvironment[keyof typeof CreditTransactionEnvironment];
+
+
+export const CreditTransactionEnvironment = {
+  production: 'production',
+  sandbox: 'sandbox',
+} as const;
+
+export type CreditTransactionKind = typeof CreditTransactionKind[keyof typeof CreditTransactionKind];
+
+
+export const CreditTransactionKind = {
+  purchase: 'purchase',
+  refund: 'refund',
+} as const;
+
+export interface CreditTransaction {
+  id: string;
+  amountMinor: number;
+  environment: CreditTransactionEnvironment;
+  kind: CreditTransactionKind;
+  createdAt: string;
+}
+
+export interface CreditWallet {
+  customerId: string;
+  currency: CreditWalletCurrency;
+  balanceMinor: number;
+  testBalanceMinor: number;
+  transactions: CreditTransaction[];
+}
+
+export type CreditWebhookInputEventEnvironment = typeof CreditWebhookInputEventEnvironment[keyof typeof CreditWebhookInputEventEnvironment];
+
+
+export const CreditWebhookInputEventEnvironment = {
+  SANDBOX: 'SANDBOX',
+  PRODUCTION: 'PRODUCTION',
+} as const;
+
+export type CreditWebhookInputEvent = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  id: string;
+  type: string;
+  /** @maxLength 255 */
+  app_user_id?: string;
+  app_id?: string;
+  environment?: CreditWebhookInputEventEnvironment;
+};
+
+export interface CreditWebhookInput {
+  event: CreditWebhookInputEvent;
+}
+
 export interface VoiceReadiness {
   enabled: false;
   expoGoSupported: false;

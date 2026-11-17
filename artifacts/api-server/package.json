@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:credits": "esbuild src/services/credits.test.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --external:drizzle-orm --external:drizzle-orm/* --external:@replit/connectors-sdk --external:express --external:@clerk/* --external:twilio --outfile=dist/credits.test.mjs && node --test dist/credits.test.mjs",
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
@@ -14,6 +15,7 @@
   "dependencies": {
     "@clerk/express": "^2.1.90",
     "@clerk/shared": "^4.45.1",
+    "@replit/connectors-sdk": "^0.7.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",

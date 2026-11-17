@@ -21,7 +21,10 @@ import type {
 
 import type {
   ApiError,
+  BillingReadiness,
   CountryPricing,
+  CreditWallet,
+  CreditWebhookInput,
   GetTwilioAvailableNumbersParams,
   GetTwilioPricingParams,
   HealthStatus,
@@ -57,6 +60,304 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetBillingReadinessUrl = () => {
+
+
+
+
+  return `/api/billing/readiness`
+}
+
+export const getBillingReadiness = async ( options?: Parameters<typeof customFetch>[1]): Promise<BillingReadiness> => {
+
+  return customFetch<BillingReadiness>(getGetBillingReadinessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBillingReadinessQueryKey = () => {
+    return [
+    `/api/billing/readiness`
+    ] as const;
+    }
+
+
+export const getGetBillingReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getBillingReadiness>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBillingReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBillingReadinessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBillingReadiness>>> = ({ signal }) => getBillingReadiness({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBillingReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBillingReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getBillingReadiness>>>
+export type GetBillingReadinessQueryError = ErrorType<unknown>
+
+
+
+export function useGetBillingReadiness<TData = Awaited<ReturnType<typeof getBillingReadiness>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBillingReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBillingReadinessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCreditWalletUrl = () => {
+
+
+
+
+  return `/api/billing/wallet`
+}
+
+export const getCreditWallet = async ( options?: Parameters<typeof customFetch>[1]): Promise<CreditWallet> => {
+
+  return customFetch<CreditWallet>(getGetCreditWalletUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreditWalletQueryKey = () => {
+    return [
+    `/api/billing/wallet`
+    ] as const;
+    }
+
+
+export const getGetCreditWalletQueryOptions = <TData = Awaited<ReturnType<typeof getCreditWallet>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreditWalletQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreditWallet>>> = ({ signal }) => getCreditWallet({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreditWallet>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreditWalletQueryResult = NonNullable<Awaited<ReturnType<typeof getCreditWallet>>>
+export type GetCreditWalletQueryError = ErrorType<void>
+
+
+
+export function useGetCreditWallet<TData = Awaited<ReturnType<typeof getCreditWallet>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreditWalletQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReconcileCreditWalletUrl = () => {
+
+
+
+
+  return `/api/billing/reconcile`
+}
+
+/**
+ * Reads provider-verified purchases for the session customer. No client purchase IDs, amounts or identities accepted.
+ */
+export const reconcileCreditWallet = async ( options?: Parameters<typeof customFetch>[1]): Promise<CreditWallet> => {
+
+  return customFetch<CreditWallet>(getReconcileCreditWalletUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReconcileCreditWalletMutationKey = () => ['reconcileCreditWallet'] as const;
+
+export const getReconcileCreditWalletMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileCreditWallet>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileCreditWallet>>, TError,void, TContext> => {
+
+const mutationKey = getReconcileCreditWalletMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileCreditWallet>>, void> = () => {
+
+
+          return  reconcileCreditWallet(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileCreditWalletMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileCreditWallet>>>
+
+    export type ReconcileCreditWalletMutationError = ErrorType<void>
+
+
+    export const useReconcileCreditWallet = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileCreditWallet>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileCreditWallet>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getReconcileCreditWalletMutationOptions(options));
+    }
+
+export const getHandleCreditWebhookUrl = () => {
+
+
+
+
+  return `/api/billing/webhook`
+}
+
+/**
+ * RevenueCat authorization header required. Event data never grants credit; it triggers an authoritative server reconciliation.
+ */
+export const handleCreditWebhook = async (creditWebhookInput: CreditWebhookInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getHandleCreditWebhookUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(creditWebhookInput)
+  }
+);}
+
+
+
+
+
+export const getHandleCreditWebhookMutationKey = () => ['handleCreditWebhook'] as const;
+
+export const getHandleCreditWebhookMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof handleCreditWebhook>>, TError,HandleCreditWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof handleCreditWebhook>>, TError,HandleCreditWebhookMutationVariables, TContext> => {
+
+const mutationKey = getHandleCreditWebhookMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof handleCreditWebhook>>, HandleCreditWebhookMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  handleCreditWebhook(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HandleCreditWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof handleCreditWebhook>>>
+    export type HandleCreditWebhookMutationBody = BodyType<CreditWebhookInput>
+    export type HandleCreditWebhookMutationError = ErrorType<void>
+    export type HandleCreditWebhookMutationVariables = {data: BodyType<CreditWebhookInput>}
+
+    export const useHandleCreditWebhook = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof handleCreditWebhook>>, TError,HandleCreditWebhookMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof handleCreditWebhook>>,
+        TError,
+        HandleCreditWebhookMutationVariables,
+        TContext
+      > => {
+      return useMutation(getHandleCreditWebhookMutationOptions(options));
+    }
 
 export const getGetVoiceReadinessUrl = () => {
 
