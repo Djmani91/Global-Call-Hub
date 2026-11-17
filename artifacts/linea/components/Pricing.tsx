@@ -36,12 +36,17 @@ export function BillingCountry() {
   </View>;
 }
 
-export function PricingSummary({ pricing, numberType }: { pricing: CountryPricing; numberType: TwilioPhoneNumberType }) {
-  const c = useColors();
+export function monthlyRentalRate(pricing: CountryPricing, numberType: TwilioPhoneNumberType): number | undefined {
   const section = pricing.sections.find(s => s.kind === 'numbers');
   const rate = section?.rates.find(r => r.numberType.toLowerCase().replace(/[^a-z]/g, '') === numberType.replace(/[^a-z]/g, ''));
-  return <Text testID="number-rental-price" style={{ fontFamily: F.s, color: rate ? c.primary : c.mutedForeground, fontSize: 13 }}>
-    {rate ? `${money(rate.amount, pricing.currency)} ${pricing.currency}/month` : 'Monthly price unavailable'}
+  return section?.error ? undefined : rate?.amount;
+}
+
+export function PricingSummary({ pricing, numberType }: { pricing: CountryPricing; numberType: TwilioPhoneNumberType }) {
+  const c = useColors();
+  const amount = monthlyRentalRate(pricing, numberType);
+  return <Text testID="number-rental-price" style={{ fontFamily: F.s, color: amount !== undefined ? c.primary : c.mutedForeground, fontSize: 13 }}>
+    {amount !== undefined ? `${money(amount, pricing.currency)} ${pricing.currency}/month` : 'Monthly price unavailable'}
   </Text>;
 }
 

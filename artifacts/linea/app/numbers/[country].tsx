@@ -16,13 +16,19 @@ import { countryFromTwilio, findCountry } from '@/data/demo';
 import { Btn, CountryMark, DemoNote, EmptyState, F, Press, SearchBar, useBottomPad } from '@/components/ui';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 import { useApp } from '@/context/AppContext';
-import { PricingSummary } from '@/components/Pricing';
-import { CURRENCIES } from '@/utils/currency';
+import { monthlyRentalRate, PricingSummary } from '@/components/Pricing';
+import { CURRENCIES, money } from '@/utils/currency';
 
 const NUMBER_TYPES: { value: TwilioPhoneNumberType; label: string }[] = [
   { value: 'local', label: 'Local' },
   { value: 'mobile', label: 'Mobile' },
   { value: 'toll-free', label: 'Toll-free' },
+];
+
+const RENTAL_PLANS = [
+  { months: 1 as const, title: '1 Month', discount: 0 },
+  { months: 3 as const, title: '3 Months', discount: 52 },
+  { months: 12 as const, title: '12 Months', discount: 70 },
 ];
 
 export default function CountryNumbers() {
@@ -40,6 +46,7 @@ export default function CountryNumbers() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
+  const [selectedTerm, setSelectedTerm] = useState<1 | 3 | 12>(1);
   const availableTypes = countryEntry?.numberTypes ?? NUMBER_TYPES.map(item => item.value);
   const activeType = availableTypes.includes(phoneNumberType) ? phoneNumberType : (availableTypes[0] ?? 'local');
   const bottom = useBottomPad(false);
@@ -81,6 +88,14 @@ export default function CountryNumbers() {
   } });
   const pricing = !pricingQuery.isError ? pricingQuery.data : undefined;
   const pricingError = pricing?.sections.find(s => s.kind === 'numbers')?.error;
+  const monthlyRental = pricing ? monthlyRentalRate(pricing, activeType) : undefined;
+  const plan = RENTAL_PLANS.find(item => item.months === selectedTerm)!;
+  const standardTotal = monthlyRental === undefined ? undefined : Math.round(monthlyRental * selectedTerm * 100) / 100;
+  const upfrontTotal = standardTotal === undefined
+    ? undefined
+    : Math.round(standardTotal * (100 - plan.discount)) / 100;
+  const monthlyEquivalent = upfrontTotal === undefined ? undefined : upfrontTotal / selectedTerm;
+  const selectedNumberInfo = numbersQuery.data?.numbers.find(item => item.phoneNumber === selectedNumber);
 
   if (!ct && countriesQuery.isLoading) {
     return <View style={{ flex: 1, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center' }}>
@@ -277,15 +292,91 @@ export default function CountryNumbers() {
               <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 18, marginTop: 3 }}>
                 {selectedNumber}
               </Text>
+              {selectedNumberInfo ? (
+                <Text style={{ fontFamily: F.s, color: c.primary, fontSize: 13, marginTop: 4 }}>
+                  {selectedNumberInfo.capabilities.voice ? 'Voice calling' : 'No voice'} · SMS enabled
+                </Text>
+              ) : null}
+              <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 15, marginTop: 14 }}>
+                Choose a rental term
+              </Text>
+              <View style={styles.planOptions}>
+                {RENTAL_PLANS.map(item => {
+                  const active = item.months === selectedTerm;
+                  const itemStandardTotal = monthlyRental === undefined
+                    ? undefined
+                    : Math.round(monthlyRental * item.months * 100) / 100;
+                  const itemTotal = monthlyRental === undefined
+                    ? undefined
+                    : Math.round(itemStandardTotal! * (100 - item.discount)) / 100;
+                  return (
+                    <Press
+                      key={item.months}
+                      testID={`number-term-${item.months}`}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active }}
+                      onPress={() => setSelectedTerm(item.months)}
+                      style={[
+                        styles.planOption,
+                        { borderColor: active ? c.primary : c.border, backgroundColor: active ? c.accent : c.background },
+                      ]}
+                    >
+                      <Text style={{ fontFamily: F.s, color: c.foreground, fontSize: 12 }}>{item.title}</Text>
+                      <Text style={{ fontFamily: F.b, color: c.primary, fontSize: 12, marginTop: 4 }}>
+                        {itemTotal === undefined ? '—' : money(itemTotal, pricing?.currency ?? CURRENCIES[profile.billingCountry])}
+                      </Text>
+                      {item.discount > 0 ? (
+                        <Text style={{ fontFamily: F.m, color: c.primary, fontSize: 10, marginTop: 3 }}>
+                          Save {item.discount}%
+                        </Text>
+                      ) : null}
+                    </Press>
+                  );
+                })}
+              </View>
+              <View style={styles.planPrice}>
+                {upfrontTotal !== undefined && monthlyEquivalent !== undefined ? (
+                  <>
+                    <Text style={{ fontFamily: F.b, color: c.foreground, fontSize: 28 }}>
+                      {money(monthlyEquivalent, pricing!.currency)}/month
+                    </Text>
+                    <Text style={{ fontFamily: F.m, color: c.mutedForeground, fontSize: 14 }}>
+                      {standardTotal !== upfrontTotal ? (
+                        <Text style={{ textDecorationLine: 'line-through' }}>{money(standardTotal!, pricing!.currency)}  </Text>
+                      ) : null}
+                      {money(upfrontTotal, pricing!.currency)} due upfront for {selectedTerm} {selectedTerm === 1 ? 'month' : 'months'}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={{ fontFamily: F.s, color: c.mutedForeground, fontSize: 14 }}>
+                    {pricingQuery.isLoading ? 'Loading number price…' : 'Number price unavailable'}
+                  </Text>
+                )}
+              </View>
+              <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12, lineHeight: 18, textAlign: 'center' }}>
+                {upfrontTotal !== undefined
+                  ? `Paid upfront. Auto-renews every ${selectedTerm} ${selectedTerm === 1 ? 'month' : 'months'} at ${money(upfrontTotal, pricing!.currency)} unless cancelled.`
+                  : `Paid upfront; auto-renews for the selected ${selectedTerm}-month term.`}
+              </Text>
+              <View style={[styles.usageNote, { backgroundColor: c.background }]}>
+                <Text style={{ fontFamily: F.s, color: c.foreground, fontSize: 13 }}>
+                  Calls and SMS are billed separately by usage
+                </Text>
+                <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12, lineHeight: 17, marginTop: 4 }}>
+                  Twilio provides no unlimited-SMS allowance here. Messages are metered per segment.
+                </Text>
+                <Btn label="See call & SMS rates" testID="selected-number-view-rates" kind="ghost"
+                  onPress={() => router.push({ pathname: '/settings/[section]', params: { section: 'rates', country: ct.code } })} />
+              </View>
               <Btn
-                label="Purchase is off in this preview"
+                label="Purchase unavailable in preview"
                 testID="live-number-purchase-disabled"
                 onPress={() => {}}
                 disabled
                 kind="ghost"
               />
               <Text style={{ fontFamily: F.r, color: c.mutedForeground, fontSize: 12, lineHeight: 18, textAlign: 'center' }}>
-                No number has been reserved or bought. We’ll add the purchase step later.
+                This is only a price preview. No number is reserved and no payment or renewal is started.
               </Text>
             </View>
           ) : null}
@@ -317,4 +408,8 @@ const styles = StyleSheet.create({
   errorCard: { alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 16, padding: 18 },
   numberRow: { flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderRadius: 14, padding: 15 },
   selectedCard: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 11 },
+  planOptions: { flexDirection: 'row', gap: 7 },
+  planOption: { flex: 1, minHeight: 76, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: 12, paddingHorizontal: 4, paddingVertical: 9 },
+  planPrice: { alignItems: 'center', gap: 5, paddingVertical: 12 },
+  usageNote: { borderRadius: 12, padding: 12 },
 });
