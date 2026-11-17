@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -11,9 +11,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AppProvider } from '@/context/AppContext';
+import { useApp } from '@/context/AppContext';
 import { BillingProvider } from '@/context/BillingContext';
+import { ClerkLoaded, ClerkProvider, useAuth, useUser } from '@clerk/expo';
 import colors from '@/constants/colors';
-import { setBaseUrl } from '@workspace/api-client-react';
+import { setAuthTokenGetter, setBaseUrl } from '@workspace/api-client-react';
 
 SplashScreen.preventAutoHideAsync();
 if (process.env.EXPO_PUBLIC_DOMAIN) {
@@ -21,6 +23,8 @@ if (process.env.EXPO_PUBLIC_DOMAIN) {
 }
 const queryClient = new QueryClient();
 const c = colors.light;
+const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
+if (!clerkPublishableKey) throw new Error('Customer sign-in is not configured on this app.');
 
 const close = () => (
   <Pressable onPress={() => router.back()} hitSlop={12} testID="modal-close" accessibilityLabel="Close">
@@ -42,6 +46,8 @@ function RootLayoutNav() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="auth" options={{ headerShown: false }} />
+      <Stack.Screen name="admin/customers" options={{ title: 'Customers' }} />
       <Stack.Screen name="conversation/[id]" options={{ title: '' }} />
       <Stack.Screen name="compose" options={{ title: 'New message', presentation: 'modal', headerLeft: close }} />
       <Stack.Screen name="dialer" options={{ title: 'Keypad', presentation: 'modal', headerLeft: close }} />
@@ -57,6 +63,44 @@ function RootLayoutNav() {
   );
 }
 
+function CustomerSessionProviders({ children }: { children: React.ReactNode }) {
+  const { getToken, userId, isSignedIn } = useAuth();
+  const { user, isLoaded: userLoaded } = useUser();
+  const { setProfile, resetDemo, ready } = useApp();
+  const previousUserId = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    setAuthTokenGetter(() => getToken());
+  }, [getToken]);
+
+  useEffect(() => {
+    if (!ready || !userLoaded) return;
+    if (previousUserId.current === userId) return;
+    previousUserId.current = userId ?? null;
+    queryClient.clear();
+    resetDemo();
+    if (user) {
+      setProfile({
+        name: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Linea customer',
+        email: user.primaryEmailAddress?.emailAddress ?? '',
+        homeCountry: 'GB',
+        billingCountry: 'GB',
+      });
+    }
+  }, [userId, ready, userLoaded]);
+
+  return (
+    <BillingProvider customerId={isSignedIn ? userId : null}>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.background }}>
+        <KeyboardProvider>
+          <StatusBar style="light" />
+          {children}
+        </KeyboardProvider>
+      </GestureHandlerRootView>
+    </BillingProvider>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
   useEffect(() => {
@@ -66,18 +110,20 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <AppProvider>
-            <BillingProvider>
-            <GestureHandlerRootView style={{ flex: 1, backgroundColor: c.background }}>
-              <KeyboardProvider>
-                <StatusBar style="light" />
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-            </BillingProvider>
-          </AppProvider>
-        </QueryClientProvider>
+        <ClerkProvider
+          publishableKey={clerkPublishableKey}
+          proxyUrl={process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined}
+        >
+          <ClerkLoaded>
+            <QueryClientProvider client={queryClient}>
+              <AppProvider>
+                <CustomerSessionProviders>
+                  <RootLayoutNav />
+                </CustomerSessionProviders>
+              </AppProvider>
+            </QueryClientProvider>
+          </ClerkLoaded>
+        </ClerkProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );

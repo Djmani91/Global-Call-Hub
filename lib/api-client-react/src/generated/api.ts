@@ -20,14 +20,23 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminCustomerDirectory,
   ApiError,
   BillingReadiness,
+  CheckPhoneVerificationRequest,
+  CheckPhoneVerificationResponse,
+  CompleteCustomerRegistrationRequest,
   CountryPricing,
   CreditWallet,
   CreditWebhookInput,
+  CustomerAuthMe,
+  CustomerAuthReadiness,
+  CustomerProfile,
   GetTwilioAvailableNumbersParams,
   GetTwilioPricingParams,
   HealthStatus,
+  StartPhoneVerificationRequest,
+  StartPhoneVerificationResponse,
   TwilioAvailableNumberCountriesResponse,
   TwilioAvailableNumbersResponse,
   VoiceReadiness,
@@ -61,6 +70,501 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetCustomerAuthReadinessUrl = () => {
+
+
+
+
+  return `/api/auth/readiness`
+}
+
+/**
+ * @summary Check whether Twilio phone verification is configured
+ */
+export const getCustomerAuthReadiness = async ( options?: Parameters<typeof customFetch>[1]): Promise<CustomerAuthReadiness> => {
+
+  return customFetch<CustomerAuthReadiness>(getGetCustomerAuthReadinessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerAuthReadinessQueryKey = () => {
+    return [
+    `/api/auth/readiness`
+    ] as const;
+    }
+
+
+export const getGetCustomerAuthReadinessQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerAuthReadiness>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerAuthReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerAuthReadinessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerAuthReadiness>>> = ({ signal }) => getCustomerAuthReadiness({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerAuthReadiness>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomerAuthReadinessQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerAuthReadiness>>>
+export type GetCustomerAuthReadinessQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Check whether Twilio phone verification is configured
+ */
+
+export function useGetCustomerAuthReadiness<TData = Awaited<ReturnType<typeof getCustomerAuthReadiness>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerAuthReadiness>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomerAuthReadinessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStartCustomerPhoneVerificationUrl = () => {
+
+
+
+
+  return `/api/auth/phone/start`
+}
+
+/**
+ * @summary Send a Twilio verification code to a phone
+ */
+export const startCustomerPhoneVerification = async (startPhoneVerificationRequest: StartPhoneVerificationRequest, options?: Parameters<typeof customFetch>[1]): Promise<StartPhoneVerificationResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StartPhoneVerificationResponse>(getStartCustomerPhoneVerificationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(startPhoneVerificationRequest)
+  }
+);}
+
+
+
+
+
+export const getStartCustomerPhoneVerificationMutationKey = () => ['startCustomerPhoneVerification'] as const;
+
+export const getStartCustomerPhoneVerificationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startCustomerPhoneVerification>>, TError,StartCustomerPhoneVerificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startCustomerPhoneVerification>>, TError,StartCustomerPhoneVerificationMutationVariables, TContext> => {
+
+const mutationKey = getStartCustomerPhoneVerificationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startCustomerPhoneVerification>>, StartCustomerPhoneVerificationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startCustomerPhoneVerification(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartCustomerPhoneVerificationMutationResult = NonNullable<Awaited<ReturnType<typeof startCustomerPhoneVerification>>>
+    export type StartCustomerPhoneVerificationMutationBody = BodyType<StartPhoneVerificationRequest>
+    export type StartCustomerPhoneVerificationMutationError = ErrorType<void>
+    export type StartCustomerPhoneVerificationMutationVariables = {data: BodyType<StartPhoneVerificationRequest>}
+
+    /**
+ * @summary Send a Twilio verification code to a phone
+ */
+export const useStartCustomerPhoneVerification = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startCustomerPhoneVerification>>, TError,StartCustomerPhoneVerificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startCustomerPhoneVerification>>,
+        TError,
+        StartCustomerPhoneVerificationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartCustomerPhoneVerificationMutationOptions(options));
+    }
+
+export const getCheckCustomerPhoneVerificationUrl = () => {
+
+
+
+
+  return `/api/auth/phone/check`
+}
+
+/**
+ * @summary Verify a Twilio code and return a one-time next step
+ */
+export const checkCustomerPhoneVerification = async (checkPhoneVerificationRequest: CheckPhoneVerificationRequest, options?: Parameters<typeof customFetch>[1]): Promise<CheckPhoneVerificationResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CheckPhoneVerificationResponse>(getCheckCustomerPhoneVerificationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(checkPhoneVerificationRequest)
+  }
+);}
+
+
+
+
+
+export const getCheckCustomerPhoneVerificationMutationKey = () => ['checkCustomerPhoneVerification'] as const;
+
+export const getCheckCustomerPhoneVerificationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkCustomerPhoneVerification>>, TError,CheckCustomerPhoneVerificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkCustomerPhoneVerification>>, TError,CheckCustomerPhoneVerificationMutationVariables, TContext> => {
+
+const mutationKey = getCheckCustomerPhoneVerificationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkCustomerPhoneVerification>>, CheckCustomerPhoneVerificationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  checkCustomerPhoneVerification(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckCustomerPhoneVerificationMutationResult = NonNullable<Awaited<ReturnType<typeof checkCustomerPhoneVerification>>>
+    export type CheckCustomerPhoneVerificationMutationBody = BodyType<CheckPhoneVerificationRequest>
+    export type CheckCustomerPhoneVerificationMutationError = ErrorType<void>
+    export type CheckCustomerPhoneVerificationMutationVariables = {data: BodyType<CheckPhoneVerificationRequest>}
+
+    /**
+ * @summary Verify a Twilio code and return a one-time next step
+ */
+export const useCheckCustomerPhoneVerification = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkCustomerPhoneVerification>>, TError,CheckCustomerPhoneVerificationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkCustomerPhoneVerification>>,
+        TError,
+        CheckCustomerPhoneVerificationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCheckCustomerPhoneVerificationMutationOptions(options));
+    }
+
+export const getCompleteCustomerRegistrationUrl = () => {
+
+
+
+
+  return `/api/auth/complete`
+}
+
+/**
+ * @summary Attach verified phone proof to the verified Clerk account
+ */
+export const completeCustomerRegistration = async (completeCustomerRegistrationRequest: CompleteCustomerRegistrationRequest, options?: Parameters<typeof customFetch>[1]): Promise<CustomerProfile> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CustomerProfile>(getCompleteCustomerRegistrationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(completeCustomerRegistrationRequest)
+  }
+);}
+
+
+
+
+
+export const getCompleteCustomerRegistrationMutationKey = () => ['completeCustomerRegistration'] as const;
+
+export const getCompleteCustomerRegistrationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeCustomerRegistration>>, TError,CompleteCustomerRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeCustomerRegistration>>, TError,CompleteCustomerRegistrationMutationVariables, TContext> => {
+
+const mutationKey = getCompleteCustomerRegistrationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeCustomerRegistration>>, CompleteCustomerRegistrationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  completeCustomerRegistration(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteCustomerRegistrationMutationResult = NonNullable<Awaited<ReturnType<typeof completeCustomerRegistration>>>
+    export type CompleteCustomerRegistrationMutationBody = BodyType<CompleteCustomerRegistrationRequest>
+    export type CompleteCustomerRegistrationMutationError = ErrorType<void>
+    export type CompleteCustomerRegistrationMutationVariables = {data: BodyType<CompleteCustomerRegistrationRequest>}
+
+    /**
+ * @summary Attach verified phone proof to the verified Clerk account
+ */
+export const useCompleteCustomerRegistration = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeCustomerRegistration>>, TError,CompleteCustomerRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeCustomerRegistration>>,
+        TError,
+        CompleteCustomerRegistrationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCompleteCustomerRegistrationMutationOptions(options));
+    }
+
+export const getGetCustomerAuthMeUrl = () => {
+
+
+
+
+  return `/api/auth/me`
+}
+
+/**
+ * @summary Read the current customer profile and admin status
+ */
+export const getCustomerAuthMe = async ( options?: Parameters<typeof customFetch>[1]): Promise<CustomerAuthMe> => {
+
+  return customFetch<CustomerAuthMe>(getGetCustomerAuthMeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerAuthMeQueryKey = () => {
+    return [
+    `/api/auth/me`
+    ] as const;
+    }
+
+
+export const getGetCustomerAuthMeQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerAuthMe>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerAuthMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerAuthMeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerAuthMe>>> = ({ signal }) => getCustomerAuthMe({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerAuthMe>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomerAuthMeQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerAuthMe>>>
+export type GetCustomerAuthMeQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read the current customer profile and admin status
+ */
+
+export function useGetCustomerAuthMe<TData = Awaited<ReturnType<typeof getCustomerAuthMe>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerAuthMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomerAuthMeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminCustomersUrl = () => {
+
+
+
+
+  return `/api/admin/customers`
+}
+
+/**
+ * @summary List customers and their verification status for the owner
+ */
+export const getAdminCustomers = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminCustomerDirectory> => {
+
+  return customFetch<AdminCustomerDirectory>(getGetAdminCustomersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminCustomersQueryKey = () => {
+    return [
+    `/api/admin/customers`
+    ] as const;
+    }
+
+
+export const getGetAdminCustomersQueryOptions = <TData = Awaited<ReturnType<typeof getAdminCustomers>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminCustomersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminCustomers>>> = ({ signal }) => getAdminCustomers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminCustomers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminCustomersQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminCustomers>>>
+export type GetAdminCustomersQueryError = ErrorType<void>
+
+
+/**
+ * @summary List customers and their verification status for the owner
+ */
+
+export function useGetAdminCustomers<TData = Awaited<ReturnType<typeof getAdminCustomers>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminCustomersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetBillingReadinessUrl = () => {
 
@@ -799,7 +1303,7 @@ export const getGetTwilioAvailableNumbersUrl = (params: GetTwilioAvailableNumber
 }
 
 /**
- * Searches Twilio inventory for a supported country. This endpoint never purchases a number.
+ * Searches Twilio inventory for an account-supported country and type, returning only numbers Twilio marks SMS-enabled. Capabilities are returned per number. This endpoint never purchases a number.
  * @summary Search live available phone numbers
  */
 export const getTwilioAvailableNumbers = async (params: GetTwilioAvailableNumbersParams, options?: Parameters<typeof customFetch>[1]): Promise<TwilioAvailableNumbersResponse> => {

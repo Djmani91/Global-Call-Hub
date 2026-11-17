@@ -5,6 +5,86 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface CustomerAuthReadiness {
+  phoneVerificationEnabled: boolean;
+  message: string;
+}
+
+export interface StartPhoneVerificationRequest {
+  /** @pattern ^\+[1-9][0-9]{7,14}$ */
+  phoneNumber: string;
+}
+
+export interface StartPhoneVerificationResponse {
+  /** @minLength 32 */
+  challengeId: string;
+  expiresAt: string;
+}
+
+export interface CheckPhoneVerificationRequest {
+  /**
+     * @minLength 32
+     * @maxLength 100
+     */
+  challengeId: string;
+  /**
+     * @minLength 4
+     * @maxLength 10
+     * @pattern ^[0-9]+$
+     */
+  code: string;
+}
+
+export type CheckPhoneVerificationResponseStatus = typeof CheckPhoneVerificationResponseStatus[keyof typeof CheckPhoneVerificationResponseStatus];
+
+
+export const CheckPhoneVerificationResponseStatus = {
+  registration_required: 'registration_required',
+  signed_in: 'signed_in',
+} as const;
+
+export interface CheckPhoneVerificationResponse {
+  status: CheckPhoneVerificationResponseStatus;
+  /** @nullable */
+  registrationToken: string | null;
+  /** @nullable */
+  signInToken: string | null;
+}
+
+export interface CompleteCustomerRegistrationRequest {
+  /**
+     * @minLength 32
+     * @maxLength 100
+     */
+  registrationToken: string;
+}
+
+export interface CustomerProfile {
+  clerkUserId: string;
+  phoneNumber: string;
+  email: string;
+  firstName: string;
+  /** @nullable */
+  lastName: string | null;
+  phoneVerifiedAt: string;
+  emailVerifiedAt: string;
+  createdAt: string;
+}
+
+export interface CustomerAuthMe {
+  customer: CustomerProfile | null;
+  isAdmin: boolean;
+}
+
+export type AdminCustomerDirectoryCustomersItem = CustomerProfile & {
+  phoneVerified: boolean;
+  emailVerified: boolean;
+};
+
+export interface AdminCustomerDirectory {
+  customers: AdminCustomerDirectoryCustomersItem[];
+}
+
 export type BillingReadinessCurrency = typeof BillingReadinessCurrency[keyof typeof BillingReadinessCurrency];
 
 

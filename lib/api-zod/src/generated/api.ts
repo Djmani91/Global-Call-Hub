@@ -8,6 +8,122 @@
 import * as zod from 'zod';
 
 
+/**
+ * @summary Check whether Twilio phone verification is configured
+ */
+export const GetCustomerAuthReadinessResponse = zod.object({
+  "phoneVerificationEnabled": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Send a Twilio verification code to a phone
+ */
+export const startCustomerPhoneVerificationBodyPhoneNumberRegExp = new RegExp('^\\+[1-9][0-9]{7,14}$');
+
+
+export const StartCustomerPhoneVerificationBody = zod.object({
+  "phoneNumber": zod.string().regex(startCustomerPhoneVerificationBodyPhoneNumberRegExp)
+})
+
+export const startCustomerPhoneVerificationResponseChallengeIdMin = 32;
+
+
+
+export const StartCustomerPhoneVerificationResponse = zod.object({
+  "challengeId": zod.string().min(startCustomerPhoneVerificationResponseChallengeIdMin),
+  "expiresAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Verify a Twilio code and return a one-time next step
+ */
+export const checkCustomerPhoneVerificationBodyChallengeIdMin = 32;
+export const checkCustomerPhoneVerificationBodyChallengeIdMax = 100;
+
+export const checkCustomerPhoneVerificationBodyCodeMin = 4;
+export const checkCustomerPhoneVerificationBodyCodeMax = 10;
+
+
+export const checkCustomerPhoneVerificationBodyCodeRegExp = new RegExp('^[0-9]+$');
+
+
+export const CheckCustomerPhoneVerificationBody = zod.object({
+  "challengeId": zod.string().min(checkCustomerPhoneVerificationBodyChallengeIdMin).max(checkCustomerPhoneVerificationBodyChallengeIdMax),
+  "code": zod.string().min(checkCustomerPhoneVerificationBodyCodeMin).max(checkCustomerPhoneVerificationBodyCodeMax).regex(checkCustomerPhoneVerificationBodyCodeRegExp)
+})
+
+export const CheckCustomerPhoneVerificationResponse = zod.object({
+  "status": zod.enum(['registration_required', 'signed_in']),
+  "registrationToken": zod.string().nullable(),
+  "signInToken": zod.string().nullable()
+})
+
+
+/**
+ * @summary Attach verified phone proof to the verified Clerk account
+ */
+export const completeCustomerRegistrationBodyRegistrationTokenMin = 32;
+export const completeCustomerRegistrationBodyRegistrationTokenMax = 100;
+
+
+
+export const CompleteCustomerRegistrationBody = zod.object({
+  "registrationToken": zod.string().min(completeCustomerRegistrationBodyRegistrationTokenMin).max(completeCustomerRegistrationBodyRegistrationTokenMax)
+})
+
+export const CompleteCustomerRegistrationResponse = zod.object({
+  "clerkUserId": zod.string(),
+  "phoneNumber": zod.string(),
+  "email": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string().nullable(),
+  "phoneVerifiedAt": zod.coerce.date(),
+  "emailVerifiedAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Read the current customer profile and admin status
+ */
+export const GetCustomerAuthMeResponse = zod.object({
+  "customer": zod.union([zod.object({
+  "clerkUserId": zod.string(),
+  "phoneNumber": zod.string(),
+  "email": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string().nullable(),
+  "phoneVerifiedAt": zod.coerce.date(),
+  "emailVerifiedAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
+  "isAdmin": zod.boolean()
+})
+
+
+/**
+ * @summary List customers and their verification status for the owner
+ */
+export const GetAdminCustomersResponse = zod.object({
+  "customers": zod.array(zod.object({
+  "clerkUserId": zod.string(),
+  "phoneNumber": zod.string(),
+  "email": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string().nullable(),
+  "phoneVerifiedAt": zod.coerce.date(),
+  "emailVerifiedAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "phoneVerified": zod.boolean(),
+  "emailVerified": zod.boolean()
+})))
+})
+
+
 export const GetBillingReadinessResponse = zod.object({
   "productionEnabled": zod.boolean(),
   "testEnabled": zod.boolean(),
@@ -159,7 +275,7 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Searches Twilio inventory for a supported country. This endpoint never purchases a number.
+ * Searches Twilio inventory for an account-supported country and type, returning only numbers Twilio marks SMS-enabled. Capabilities are returned per number. This endpoint never purchases a number.
  * @summary Search live available phone numbers
  */
 export const getTwilioAvailableNumbersQueryCountryCodeRegExp = new RegExp('^[A-Z]{2}$');

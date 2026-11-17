@@ -4,9 +4,13 @@ import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Tabs } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { SymbolView } from 'expo-symbols';
+import { ActivityIndicator } from 'react-native';
+import { useAuth } from '@clerk/expo';
 import { useColors } from '@/hooks/useColors';
+import { useApp } from '@/context/AppContext';
 import { tap } from '@/components/ui';
 
 function NativeTabLayout() {
@@ -84,6 +88,12 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const colors = useColors();
+  const { ready } = useApp();
+  if (!isLoaded) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.background }} color={colors.primary} />;
+  if (!ready) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.background }} color={colors.primary} />;
+  if (!isSignedIn) return <Redirect href="/auth" />;
   if (isLiquidGlassAvailable()) return <NativeTabLayout />;
   return <ClassicTabLayout />;
 }

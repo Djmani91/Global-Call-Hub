@@ -1,7 +1,13 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '@clerk/expo';
+import { useQueryClient } from '@tanstack/react-query';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import {
+  getGetCustomerAuthMeQueryKey,
+  useGetCustomerAuthMe,
+} from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { useApp } from '@/context/AppContext';
 import { initials } from '@/data/demo';
@@ -22,6 +28,11 @@ const ITEMS: { key: string; label: string; icon: keyof typeof Feather.glyphMap }
 export default function Settings() {
   const c = useColors();
   const { profile } = useApp();
+  const { signOut } = useAuth();
+  const queryClient = useQueryClient();
+  const account = useGetCustomerAuthMe({
+    query: { queryKey: getGetCustomerAuthMeQueryKey(), retry: false, staleTime: 30_000 },
+  });
   const bottom = useBottomPad();
   return (
     <View style={{ flex: 1, backgroundColor: c.background }}>
@@ -47,6 +58,30 @@ export default function Settings() {
               <Feather name="chevron-right" size={20} color={c.mutedForeground} />
             </Press>
           ))}
+        </View>
+        {account.data?.isAdmin ? (
+          <View style={[styles.group, { backgroundColor: c.card }]}>
+            <Press testID="settings-customer-admin" onPress={() => router.push('/admin/customers')} scale={0.99} style={styles.item}>
+              <Feather name="users" size={21} color={c.primary} />
+              <Text style={{ flex: 1, fontFamily: F.r, fontSize: 16, color: c.foreground }}>Customer admin</Text>
+              <Feather name="chevron-right" size={20} color={c.mutedForeground} />
+            </Press>
+          </View>
+        ) : null}
+        <View style={[styles.group, { backgroundColor: c.card }]}>
+          <Press
+            testID="settings-sign-out"
+            onPress={async () => {
+              await signOut();
+              queryClient.clear();
+              router.replace('/auth');
+            }}
+            scale={0.99}
+            style={styles.item}
+          >
+            <Feather name="log-out" size={21} color={c.mutedForeground} />
+            <Text style={{ flex: 1, fontFamily: F.r, fontSize: 16, color: c.foreground }}>Sign out</Text>
+          </Press>
         </View>
         <Text style={{ fontFamily: F.r, fontSize: 13, color: c.mutedForeground, padding: 18 }}>Linea 0.1 · Demo build · Data stored on this device only</Text>
       </ScrollView>

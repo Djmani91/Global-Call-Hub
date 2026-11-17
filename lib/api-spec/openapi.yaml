@@ -10,9 +10,134 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: customer-auth
+    description: Phone-first customer signup and session handoff
+  - name: admin
+    description: Owner-only customer verification directory
   - name: twilio
     description: Read-only Twilio phone number inventory
 paths:
+  /auth/readiness:
+    get:
+      operationId: getCustomerAuthReadiness
+      tags: [customer-auth]
+      summary: Check whether Twilio phone verification is configured
+      responses:
+        "200":
+          description: Safe public readiness status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerAuthReadiness"
+  /auth/phone/start:
+    post:
+      operationId: startCustomerPhoneVerification
+      tags: [customer-auth]
+      summary: Send a Twilio verification code to a phone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartPhoneVerificationRequest"
+      responses:
+        "200":
+          description: Verification started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartPhoneVerificationResponse"
+        "400":
+          description: Invalid phone number
+        "429":
+          description: Verification send limit reached
+        "503":
+          description: Twilio Verify is not configured or unavailable
+  /auth/phone/check:
+    post:
+      operationId: checkCustomerPhoneVerification
+      tags: [customer-auth]
+      summary: Verify a Twilio code and return a one-time next step
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckPhoneVerificationRequest"
+      responses:
+        "200":
+          description: Phone verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckPhoneVerificationResponse"
+        "400":
+          description: Code is invalid, expired or already used
+        "429":
+          description: Verification attempt limit reached
+        "503":
+          description: Twilio Verify or Clerk is unavailable
+  /auth/complete:
+    post:
+      operationId: completeCustomerRegistration
+      tags: [customer-auth]
+      security: [{customerSession: []}]
+      summary: Attach verified phone proof to the verified Clerk account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteCustomerRegistrationRequest"
+      responses:
+        "200":
+          description: Customer account linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerProfile"
+        "401":
+          description: Sign-in required
+        "409":
+          description: Phone or account is already linked
+        "503":
+          description: Customer profile could not be saved
+  /auth/me:
+    get:
+      operationId: getCustomerAuthMe
+      tags: [customer-auth]
+      security: [{customerSession: []}]
+      summary: Read the current customer profile and admin status
+      responses:
+        "200":
+          description: Current account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerAuthMe"
+        "401":
+          description: Sign-in required
+        "503":
+          description: Customer account could not be loaded
+  /admin/customers:
+    get:
+      operationId: getAdminCustomers
+      tags: [admin]
+      security: [{customerSession: []}]
+      summary: List customers and their verification status for the owner
+      responses:
+        "200":
+          description: Customer directory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminCustomerDirectory"
+        "401":
+          description: Sign-in required
+        "403":
+          description: Owner access required
+        "503":
+          description: Customer directory could not be loaded
   /billing/readiness:
     get:
       operationId: getBillingReadiness
@@ -282,6 +407,83 @@ components:
       scheme: bearer
       bearerFormat: Clerk session JWT
   schemas:
+    CustomerAuthReadiness:
+      type: object
+      required: [phoneVerificationEnabled, message]
+      properties:
+        phoneVerificationEnabled: {type: boolean}
+        message: {type: string}
+    StartPhoneVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [phoneNumber]
+      properties:
+        phoneNumber:
+          type: string
+          pattern: "^\\+[1-9][0-9]{7,14}$"
+    StartPhoneVerificationResponse:
+      type: object
+      required: [challengeId, expiresAt]
+      properties:
+        challengeId: {type: string, minLength: 32}
+        expiresAt: {type: string, format: date-time}
+    CheckPhoneVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [challengeId, code]
+      properties:
+        challengeId: {type: string, minLength: 32, maxLength: 100}
+        code: {type: string, minLength: 4, maxLength: 10, pattern: "^[0-9]+$"}
+    CheckPhoneVerificationResponse:
+      type: object
+      required: [status, registrationToken, signInToken]
+      properties:
+        status:
+          type: string
+          enum: [registration_required, signed_in]
+        registrationToken: {type: [string, "null"]}
+        signInToken: {type: [string, "null"]}
+    CompleteCustomerRegistrationRequest:
+      type: object
+      additionalProperties: false
+      required: [registrationToken]
+      properties:
+        registrationToken: {type: string, minLength: 32, maxLength: 100}
+    CustomerProfile:
+      type: object
+      required: [clerkUserId, phoneNumber, email, firstName, lastName, phoneVerifiedAt, emailVerifiedAt, createdAt]
+      properties:
+        clerkUserId: {type: string}
+        phoneNumber: {type: string}
+        email: {type: string}
+        firstName: {type: string}
+        lastName: {type: [string, "null"]}
+        phoneVerifiedAt: {type: string, format: date-time}
+        emailVerifiedAt: {type: string, format: date-time}
+        createdAt: {type: string, format: date-time}
+    CustomerAuthMe:
+      type: object
+      required: [customer, isAdmin]
+      properties:
+        customer:
+          oneOf:
+            - $ref: "#/components/schemas/CustomerProfile"
+            - type: "null"
+        isAdmin: {type: boolean}
+    AdminCustomerDirectory:
+      type: object
+      required: [customers]
+      properties:
+        customers:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/CustomerProfile"
+              - type: object
+                required: [phoneVerified, emailVerified]
+                properties:
+                  phoneVerified: {type: boolean}
+                  emailVerified: {type: boolean}
     BillingReadiness:
       type: object
       required: [productionEnabled, testEnabled, currency, message]

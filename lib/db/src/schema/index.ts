@@ -19,3 +19,4 @@
 
 export * from "./voice";
 export * from "./credit-wallets";
+export * from "./customer-auth";

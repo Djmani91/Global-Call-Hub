@@ -6,10 +6,16 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminCustomerDirectory';
+export * from './adminCustomerDirectoryCustomersItem';
 export * from './apiError';
 export * from './billingCountryCode';
 export * from './billingReadiness';
 export * from './billingReadinessCurrency';
+export * from './checkPhoneVerificationRequest';
+export * from './checkPhoneVerificationResponse';
+export * from './checkPhoneVerificationResponseStatus';
+export * from './completeCustomerRegistrationRequest';
 export * from './countryPricing';
 export * from './creditTransaction';
 export * from './creditTransactionEnvironment';
@@ -19,6 +25,9 @@ export * from './creditWalletCurrency';
 export * from './creditWebhookInput';
 export * from './creditWebhookInputEvent';
 export * from './creditWebhookInputEventEnvironment';
+export * from './customerAuthMe';
+export * from './customerAuthReadiness';
+export * from './customerProfile';
 export * from './customerRate';
 export * from './customerRateDirection';
 export * from './customerRateUnit';
@@ -27,6 +36,8 @@ export * from './getTwilioPricingParams';
 export * from './healthStatus';
 export * from './pricingSection';
 export * from './pricingSectionKind';
+export * from './startPhoneVerificationRequest';
+export * from './startPhoneVerificationResponse';
 export * from './twilioAvailableNumberCountriesResponse';
 export * from './twilioAvailableNumberCountry';
 export * from './twilioAvailableNumbersResponse';
