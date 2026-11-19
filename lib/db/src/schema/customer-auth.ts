@@ -13,11 +13,11 @@ export const customerPhoneChallenges = pgTable("customer_phone_challenges", {
 
 export const customerProfiles = pgTable("customer_profiles", {
   clerkUserId: text("clerk_user_id").primaryKey(),
-  phoneNumber: text("phone_number").notNull().unique(),
+  phoneNumber: text("phone_number").unique(),
   email: text("email").notNull(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name"),
-  phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }).notNull(),
+  phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

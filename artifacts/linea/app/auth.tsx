@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -13,13 +11,8 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth, useClerk, useUser, useSignIn, useSignUp } from '@clerk/expo';
-import { getCountries, getCountryCallingCode, parsePhoneNumber } from 'libphonenumber-js';
 import {
-  useCheckCustomerPhoneVerification,
   useCompleteCustomerRegistration,
-  getGetCustomerAuthReadinessQueryKey,
-  useStartCustomerPhoneVerification,
-  useGetCustomerAuthReadiness,
   setAuthTokenGetter,
   useGetCustomerAuthMe,
   getGetCustomerAuthMeQueryKey,
@@ -31,32 +24,7 @@ import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollV
 import { Btn, F, ScreenHeader } from '@/components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type RegionCode = ReturnType<typeof getCountries>[number];
-type PhoneCountry = { code: RegionCode; name: string; dial: string };
-type Step = 'phone' | 'sms' | 'email' | 'email-code' | 'name';
-
-const COMMON_NAMES: Record<string, string> = {
-  GB: 'United Kingdom', US: 'United States', CA: 'Canada', AU: 'Australia',
-  NZ: 'New Zealand', IE: 'Ireland', IN: 'India', PK: 'Pakistan',
-  FR: 'France', DE: 'Germany', ES: 'Spain', IT: 'Italy', BR: 'Brazil',
-  NG: 'Nigeria', ZA: 'South Africa', SG: 'Singapore', AE: 'United Arab Emirates',
-};
-
-function countryName(code: string) {
-  if (COMMON_NAMES[code]) return COMMON_NAMES[code];
-  try {
-    if (typeof Intl.DisplayNames === 'function') {
-      return new Intl.DisplayNames(['en'], { type: 'region' }).of(code) ?? code;
-    }
-  } catch {}
-  return code;
-}
-
-function flagFor(code: string) {
-  return Array.from(code.toUpperCase(), (letter) =>
-    String.fromCodePoint(127397 + letter.charCodeAt(0)),
-  ).join('');
-}
+type Step = 'email' | 'email-code' | 'name';
 
 function safeError(error: unknown, fallback: string) {
   const value = error as {
@@ -70,11 +38,6 @@ function safeError(error: unknown, fallback: string) {
   return clerkMessage?.longMessage ?? clerkMessage?.message ?? fallback;
 }
 
-function maskPhone(phone: string) {
-  if (phone.length < 7) return phone;
-  return `${phone.slice(0, 4)}${'•'.repeat(Math.min(7, phone.length - 6))}${phone.slice(-3)}`;
-}
-
 export default function CustomerAuth() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -86,119 +49,48 @@ export default function CustomerAuth() {
   const { signIn } = useSignIn();
   const { signUp, fetchStatus: signUpFetchStatus } = useSignUp();
   const { setProfile, profile } = useApp();
-  const startPhone = useStartCustomerPhoneVerification();
-  const checkPhone = useCheckCustomerPhoneVerification();
   const completeRegistration = useCompleteCustomerRegistration();
-  const readiness = useGetCustomerAuthReadiness({
-    query: { queryKey: getGetCustomerAuthReadinessQueryKey(), retry: false, staleTime: 15_000 },
-  });
-  const [step, setStep] = useState<Step>('phone');
-  const [countryCode, setCountryCode] = useState<RegionCode>('GB');
-  const [nationalNumber, setNationalNumber] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [challengeId, setChallengeId] = useState('');
-  const [registrationToken, setRegistrationToken] = useState('');
-  const [smsCode, setSmsCode] = useState('');
+  const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailCode, setEmailCode] = useState('');
   const [fullName, setFullName] = useState('');
-  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
-  const [countrySearch, setCountrySearch] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [smsCooldown, setSmsCooldown] = useState(0);
   const [emailCooldown, setEmailCooldown] = useState(0);
   const account = useGetCustomerAuthMe({
     query: { queryKey: [...getGetCustomerAuthMeQueryKey(), userId], enabled: !!isSignedIn, retry: false },
   });
 
-  const countries = useMemo<PhoneCountry[]>(() =>
-    getCountries()
-      .map((code) => ({ code, name: countryName(code), dial: `+${getCountryCallingCode(code)}` }))
-      .sort((a, b) => a.name.localeCompare(b.name)), []);
-  const country = countries.find((item) => item.code === countryCode) ??
-    { code: 'GB' as RegionCode, name: 'United Kingdom', dial: '+44' };
-  const filteredCountries = countries.filter((item) =>
-    `${item.name} ${item.code} ${item.dial}`.toLowerCase().includes(countrySearch.toLowerCase()),
-  );
-  const parsedPhone = useMemo(() => {
-    if (!nationalNumber.trim()) return null;
-    try {
-      const parsed = parsePhoneNumber(nationalNumber, countryCode);
-      return parsed?.isValid() ? parsed.number : null;
-    } catch {
-      return null;
-    }
-  }, [countryCode, nationalNumber]);
-  const busy = submitting || startPhone.isPending || checkPhone.isPending ||
-    completeRegistration.isPending || signUpFetchStatus === 'fetching';
-  const phoneReady = readiness.data?.phoneVerificationEnabled === true;
+  const busy = submitting || completeRegistration.isPending || signUpFetchStatus === 'fetching';
 
   useEffect(() => {
     if (isSignedIn && account.data?.customer) router.replace('/(tabs)');
   }, [isSignedIn, account.data?.customer]);
   useEffect(() => {
-    if (!smsCooldown && !emailCooldown) return;
+    if (!isSignedIn || !account.data || account.data.customer || !user) return;
+    const primaryEmail = user.primaryEmailAddress;
+    if (primaryEmail?.verification.status !== 'verified') return;
+    setEmail(primaryEmail.emailAddress);
+    setFullName([user.firstName, user.lastName].filter(Boolean).join(' '));
+    setStep('name');
+  }, [
+    isSignedIn,
+    account.data,
+    account.data?.customer,
+    user?.id,
+    user?.primaryEmailAddress?.emailAddress,
+    user?.primaryEmailAddress?.verification.status,
+    user?.firstName,
+    user?.lastName,
+  ]);
+  useEffect(() => {
+    if (!emailCooldown) return;
     const timer = setTimeout(() => {
-      setSmsCooldown(value => Math.max(0, value - 1));
       setEmailCooldown(value => Math.max(0, value - 1));
     }, 1000);
     return () => clearTimeout(timer);
-  }, [smsCooldown, emailCooldown]);
-
-  async function beginPhoneVerification() {
-    setError('');
-    if (!parsedPhone) {
-      setError('Enter a valid mobile number for the selected country.');
-      return;
-    }
-    try {
-      const result = await startPhone.mutateAsync({ data: { phoneNumber: parsedPhone } });
-      setPhoneNumber(parsedPhone);
-      setChallengeId(result.challengeId);
-      setSmsCode('');
-      setSmsCooldown(60);
-      setStep('sms');
-    } catch (requestError) {
-      setError(safeError(requestError, 'We could not send a code. Check the number and try again.'));
-    }
-  }
-
-  async function verifyPhoneCode() {
-    setError('');
-    if (!challengeId || smsCode.trim().length < 4) {
-      setError('Enter the code from your SMS.');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const result = await checkPhone.mutateAsync({ data: { challengeId, code: smsCode.trim() } });
-      if (result.status === 'signed_in' && result.signInToken) {
-        const { error: ticketError } = await signIn.ticket({ ticket: result.signInToken });
-        if (ticketError) throw ticketError;
-        if (signIn.status !== 'complete') {
-          throw new Error('Phone sign-in did not complete.');
-        }
-        const finalized = await signIn.finalize({ navigate: () => undefined });
-        if (finalized.error) throw finalized.error;
-        await queryClient.invalidateQueries({ queryKey: getGetCustomerAuthMeQueryKey() });
-        router.replace('/(tabs)');
-        return;
-      }
-      if (!result.registrationToken) throw new Error('Phone verification could not continue.');
-      setRegistrationToken(result.registrationToken);
-      if (isSignedIn && user?.primaryEmailAddress?.verification.status === 'verified') {
-        setEmail(user.primaryEmailAddress.emailAddress);
-        setFullName([user.firstName, user.lastName].filter(Boolean).join(' '));
-        setStep('name');
-      } else {
-        setStep('email');
-      }
-    } catch (requestError) {
-      setError(safeError(requestError, 'That code did not work. Check it or request a new one.'));
-    } finally { setSubmitting(false); }
-  }
+  }, [emailCooldown]);
 
   async function sendEmailCode() {
     setError('');
@@ -227,7 +119,7 @@ export default function CustomerAuth() {
         if (finalized.error) throw finalized.error;
         const existingUser = await clerk.user?.reload();
         if (existingUser?.primaryEmailAddress?.verification.status !== 'verified') {
-          setError('Verify the existing account’s email before linking this phone.');
+          setError('Verify the existing account’s email before continuing.');
           return;
         }
         setFullName([existingUser.firstName, existingUser.lastName].filter(Boolean).join(' '));
@@ -271,11 +163,6 @@ export default function CustomerAuth() {
       setError('Enter your name to finish creating the account.');
       return;
     }
-    if (!registrationToken) {
-      setError('Your phone verification expired. Start again to verify your number.');
-      setStep('phone');
-      return;
-    }
     setSubmitting(true);
     try {
       if (clerk.user) {
@@ -290,7 +177,7 @@ export default function CustomerAuth() {
         if (finalized.error) throw finalized.error;
       }
       if (Platform.OS !== 'web') setAuthTokenGetter(() => clerk.session?.getToken() ?? Promise.resolve(null));
-      await completeRegistration.mutateAsync({ data: { registrationToken } });
+      await completeRegistration.mutateAsync({ data: {} });
       await queryClient.invalidateQueries({ queryKey: getGetCustomerAuthMeQueryKey() });
       setProfile({
         ...profile,
@@ -303,27 +190,21 @@ export default function CustomerAuth() {
     } finally { setSubmitting(false); }
   }
 
-  async function changePhone() {
+  async function changeEmail() {
     setError('');
-    setChallengeId('');
-    setRegistrationToken('');
-    setSmsCode('');
     setEmailCode('');
-    setStep('phone');
+    setPassword('');
+    setStep('email');
     try { await signUp.reset(); } catch {}
   }
 
-  const stageTitle = step === 'phone' || step === 'sms' ? 'Your phone number'
-    : step === 'email' || step === 'email-code' ? 'Verify your email' : 'Your name';
-  const stageBody = step === 'phone'
-    ? 'Sign in or create an account with a one-time SMS code.'
-    : step === 'sms'
-      ? `Enter the code sent to ${maskPhone(phoneNumber)}.`
-      : step === 'email'
-        ? 'Add your email and create a password, then verify your email.'
-        : step === 'email-code'
-          ? `Enter the verification code sent to ${email.trim()}.`
-          : 'Your phone and email are verified. What should we call you?';
+  const stageTitle = step === 'email' ? 'Sign in or create an account'
+    : step === 'email-code' ? 'Verify your email' : 'Your name';
+  const stageBody = step === 'email'
+    ? 'Use your email and password. New accounts verify email before continuing.'
+    : step === 'email-code'
+      ? `Enter the verification code sent to ${email.trim()}.`
+      : 'Your email is verified. What should we call you?';
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -339,98 +220,14 @@ export default function CustomerAuth() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.mark, { backgroundColor: colors.primary }]}>
-          <Feather name="phone" size={24} color={colors.primaryForeground} />
+          <Feather name="mail" size={24} color={colors.primaryForeground} />
         </View>
-        {step === 'phone' ? <Text style={[styles.helper, { color: colors.primary, marginBottom: 10 }]}>Calls, messages and extra phone numbers</Text> : null}
         <Text style={[styles.title, { color: colors.foreground }]}>{stageTitle}</Text>
         <Text style={[styles.body, { color: colors.mutedForeground }]}>{stageBody}</Text>
         {isSignedIn && account.isError ? (
           <Pressable onPress={() => void account.refetch()} style={styles.textAction}>
             <Text style={{ color: colors.primary }}>Could not load your account. Tap to retry.</Text>
           </Pressable>
-        ) : null}
-
-        {step === 'phone' ? (
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.foreground }]}>Mobile number</Text>
-            <View style={[styles.phoneRow, { borderColor: colors.border, backgroundColor: colors.input }]}>
-              <Pressable
-                testID="phone-country"
-                accessibilityRole="button"
-                accessibilityLabel={`Country ${country.name}, ${country.dial}`}
-                onPress={() => setCountryPickerOpen(true)}
-                style={styles.countryButton}
-              >
-                <Text style={styles.flag}>{flagFor(country.code)}</Text>
-                <Text style={[styles.dial, { color: colors.foreground }]}>{country.dial}</Text>
-                <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-              </Pressable>
-              <TextInput
-                testID="phone-number-input"
-                value={nationalNumber}
-                onChangeText={(value) => setNationalNumber(value.replace(/[^\d\s().-]/g, ''))}
-                placeholder="Mobile number"
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="phone-pad"
-                textContentType="telephoneNumber"
-                autoComplete="tel"
-                style={[styles.input, { color: colors.foreground }]}
-                accessibilityLabel="Mobile phone number"
-              />
-            </View>
-            <Text style={[styles.helper, { color: colors.mutedForeground }]}>
-              We’ll send a code by SMS. Message charges may apply.
-            </Text>
-            <Text style={[styles.helper, { color: colors.mutedForeground }]}>
-              On a Twilio trial, the recipient number must first be verified in Twilio.
-            </Text>
-            {!phoneReady ? (
-              <Text style={[styles.helper, { color: colors.destructive }]}>
-                {readiness.isLoading
-                  ? 'Checking phone verification…'
-                  : readiness.data?.message ?? 'Phone verification status is unavailable. Please try again later.'}
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
-
-        {step === 'sms' ? (
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.foreground }]}>SMS code</Text>
-            <TextInput
-              testID="phone-code-input"
-              value={smsCode}
-              onChangeText={(value) => setSmsCode(value.replace(/\D/g, '').slice(0, 10))}
-              placeholder="Enter verification code"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="number-pad"
-              autoComplete="sms-otp"
-              textContentType="oneTimeCode"
-              maxLength={10}
-              style={[styles.textInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.input }]}
-              accessibilityLabel="SMS verification code"
-            />
-            <Pressable
-              testID="resend-phone-code"
-              disabled={busy || smsCooldown > 0}
-              onPress={async () => {
-                setError('');
-                try {
-                  const result = await startPhone.mutateAsync({ data: { phoneNumber } });
-                  setChallengeId(result.challengeId);
-                  setSmsCode('');
-                  setSmsCooldown(60);
-                } catch (requestError) {
-                  setError(safeError(requestError, 'We could not send another code. Please wait and try again.'));
-                }
-              }}
-              style={styles.textAction}
-            >
-              <Text style={{ color: smsCooldown ? colors.mutedForeground : colors.primary, fontFamily: F.s }}>
-                {smsCooldown ? `Resend SMS in ${smsCooldown}s` : 'Resend SMS code'}
-              </Text>
-            </Pressable>
-          </View>
         ) : null}
 
         {step === 'email' ? (
@@ -530,83 +327,28 @@ export default function CustomerAuth() {
           <Btn
             label={busy
               ? 'Please wait'
-              : step === 'phone' ? 'Text me a code'
-                : step === 'sms' ? 'Verify phone'
-                  : step === 'email' ? 'Send email code'
-                    : step === 'email-code' ? 'Verify email' : 'Create account'}
+              : step === 'email' ? 'Continue with email'
+                : step === 'email-code' ? 'Verify email' : 'Create account'}
             onPress={() => {
-              if (step === 'phone') void beginPhoneVerification();
-              else if (step === 'sms') void verifyPhoneCode();
-              else if (step === 'email') void sendEmailCode();
+              if (step === 'email') void sendEmailCode();
               else if (step === 'email-code') void verifyEmailCode();
               else void finishSignup();
             }}
-            disabled={busy || (step === 'phone' && !phoneReady)}
+            disabled={busy}
             testID={`auth-submit-${step}`}
           />
           {busy ? <ActivityIndicator color={colors.primary} style={{ marginTop: 14 }} /> : null}
-          {step !== 'phone' ? (
+          {step === 'email-code' && !isSignedIn ? (
             <Pressable
-              testID="auth-change-phone"
-              onPress={() => void changePhone()}
+              testID="auth-change-email"
+              onPress={() => void changeEmail()}
               style={styles.textAction}
             >
-              <Text style={{ color: colors.mutedForeground, fontFamily: F.m }}>Use a different phone number</Text>
+              <Text style={{ color: colors.mutedForeground, fontFamily: F.m }}>Use a different email</Text>
             </Pressable>
           ) : null}
         </View>
       </KeyboardAwareScrollViewCompat>
-
-      <Modal visible={countryPickerOpen} animationType="slide" onRequestClose={() => setCountryPickerOpen(false)}>
-        <View style={[styles.modal, { backgroundColor: colors.background, paddingTop: insets.top + 10 }]}>
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Choose your country</Text>
-            <Pressable
-              testID="close-country-picker"
-              onPress={() => setCountryPickerOpen(false)}
-              accessibilityRole="button"
-              accessibilityLabel="Close country picker"
-              hitSlop={12}
-            >
-              <Feather name="x" size={24} color={colors.foreground} />
-            </Pressable>
-          </View>
-          <View style={[styles.searchBox, { backgroundColor: colors.card }]}>
-            <Feather name="search" size={18} color={colors.mutedForeground} />
-            <TextInput
-              testID="country-search"
-              value={countrySearch}
-              onChangeText={setCountrySearch}
-              placeholder="Search country or dial code"
-              placeholderTextColor={colors.mutedForeground}
-              autoCapitalize="none"
-              style={[styles.searchInput, { color: colors.foreground }]}
-            />
-          </View>
-          <FlatList
-            data={filteredCountries}
-            keyExtractor={(item) => item.code}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <Pressable
-                testID={`phone-country-${item.code}`}
-                onPress={() => {
-                  setCountryCode(item.code);
-                  setCountryPickerOpen(false);
-                  setCountrySearch('');
-                }}
-                style={[styles.countryItem, { borderBottomColor: colors.border }]}
-              >
-                <Text style={styles.flag}>{flagFor(item.code)}</Text>
-                <Text numberOfLines={1} style={[styles.countryName, { color: colors.foreground }]}>{item.name}</Text>
-                <Text style={[styles.dial, { color: colors.mutedForeground }]}>{item.dial}</Text>
-                {item.code === countryCode ? <Feather name="check" size={18} color={colors.primary} /> : null}
-              </Pressable>
-            )}
-            ListEmptyComponent={<Text style={{ color: colors.mutedForeground, textAlign: 'center', padding: 24 }}>No country found.</Text>}
-          />
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -618,21 +360,8 @@ const styles = StyleSheet.create({
   body: { fontFamily: F.r, fontSize: 15, lineHeight: 22, marginTop: 8, marginBottom: 30 },
   fieldGroup: { gap: 9 },
   label: { fontFamily: F.s, fontSize: 14 },
-  phoneRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12 },
-  countryButton: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingRight: 12, borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: '#55575D' },
-  flag: { fontSize: 22, lineHeight: 28 },
-  dial: { fontFamily: F.s, fontSize: 14 },
-  input: { flex: 1, minHeight: 50, marginLeft: 12, fontFamily: F.r, fontSize: 16 },
   textInput: { minHeight: 54, borderWidth: 1, borderRadius: 14, paddingHorizontal: 15, fontFamily: F.r, fontSize: 16 },
-  helper: { fontFamily: F.r, fontSize: 12, lineHeight: 18, marginTop: 1 },
   actions: { marginTop: 28 },
   textAction: { alignSelf: 'center', paddingVertical: 15 },
   errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 18 },
-  modal: { flex: 1 },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 },
-  modalTitle: { fontFamily: F.b, fontSize: 20 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 18, marginBottom: 10, paddingHorizontal: 14, borderRadius: 14, minHeight: 48 },
-  searchInput: { flex: 1, minHeight: 48, fontFamily: F.r, fontSize: 15 },
-  countryItem: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth },
-  countryName: { flex: 1, fontFamily: F.m, fontSize: 15 },
 });

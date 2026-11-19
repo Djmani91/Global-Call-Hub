@@ -11,5 +11,5 @@ export interface CompleteCustomerRegistrationRequest {
      * @minLength 32
      * @maxLength 100
      */
-  registrationToken: string;
+  registrationToken?: string;
 }

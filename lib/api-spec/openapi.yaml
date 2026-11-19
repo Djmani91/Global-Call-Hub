@@ -446,7 +446,6 @@ components:
     CompleteCustomerRegistrationRequest:
       type: object
       additionalProperties: false
-      required: [registrationToken]
       properties:
         registrationToken: {type: string, minLength: 32, maxLength: 100}
     CustomerProfile:
@@ -454,11 +453,11 @@ components:
       required: [clerkUserId, phoneNumber, email, firstName, lastName, phoneVerifiedAt, emailVerifiedAt, createdAt]
       properties:
         clerkUserId: {type: string}
-        phoneNumber: {type: string}
+        phoneNumber: {type: [string, "null"]}
         email: {type: string}
         firstName: {type: string}
         lastName: {type: [string, "null"]}
-        phoneVerifiedAt: {type: string, format: date-time}
+        phoneVerifiedAt: {type: [string, "null"], format: date-time}
         emailVerifiedAt: {type: string, format: date-time}
         createdAt: {type: string, format: date-time}
     CustomerAuthMe:

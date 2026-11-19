@@ -8,12 +8,14 @@
 
 export interface CustomerProfile {
   clerkUserId: string;
-  phoneNumber: string;
+  /** @nullable */
+  phoneNumber: string | null;
   email: string;
   firstName: string;
   /** @nullable */
   lastName: string | null;
-  phoneVerifiedAt: Date;
+  /** @nullable */
+  phoneVerifiedAt: Date | null;
   emailVerifiedAt: Date;
   createdAt: Date;
 }

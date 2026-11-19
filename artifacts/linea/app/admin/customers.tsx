@@ -39,7 +39,7 @@ export default function CustomerAdmin() {
           <View style={styles.heading}>
             <Text style={[styles.count, { color: c.foreground }]}>{query.data?.customers.length ?? 0}</Text>
             <Text style={[styles.description, { color: c.mutedForeground }]}>
-              customers with phone and email verification status
+              customers with email and phone verification status
             </Text>
           </View>
           {(query.data?.customers ?? []).map((customer) => (
@@ -56,7 +56,7 @@ export default function CustomerAdmin() {
                   {[customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Customer'}
                 </Text>
                 <Text style={[styles.subtext, { color: c.mutedForeground }]} numberOfLines={1}>
-                  {customer.phoneNumber}
+                  {customer.phoneNumber ?? 'Phone not added'}
                 </Text>
                 <Text style={[styles.subtext, { color: c.mutedForeground }]} numberOfLines={1}>
                   {customer.email}

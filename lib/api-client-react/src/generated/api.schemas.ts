@@ -56,17 +56,19 @@ export interface CompleteCustomerRegistrationRequest {
      * @minLength 32
      * @maxLength 100
      */
-  registrationToken: string;
+  registrationToken?: string;
 }
 
 export interface CustomerProfile {
   clerkUserId: string;
-  phoneNumber: string;
+  /** @nullable */
+  phoneNumber: string | null;
   email: string;
   firstName: string;
   /** @nullable */
   lastName: string | null;
-  phoneVerifiedAt: string;
+  /** @nullable */
+  phoneVerifiedAt: string | null;
   emailVerifiedAt: string;
   createdAt: string;
 }

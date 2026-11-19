@@ -71,16 +71,16 @@ export const completeCustomerRegistrationBodyRegistrationTokenMax = 100;
 
 
 export const CompleteCustomerRegistrationBody = zod.object({
-  "registrationToken": zod.string().min(completeCustomerRegistrationBodyRegistrationTokenMin).max(completeCustomerRegistrationBodyRegistrationTokenMax)
+  "registrationToken": zod.string().min(completeCustomerRegistrationBodyRegistrationTokenMin).max(completeCustomerRegistrationBodyRegistrationTokenMax).optional()
 })
 
 export const CompleteCustomerRegistrationResponse = zod.object({
   "clerkUserId": zod.string(),
-  "phoneNumber": zod.string(),
+  "phoneNumber": zod.string().nullable(),
   "email": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string().nullable(),
-  "phoneVerifiedAt": zod.coerce.date(),
+  "phoneVerifiedAt": zod.coerce.date().nullable(),
   "emailVerifiedAt": zod.coerce.date(),
   "createdAt": zod.coerce.date()
 })
@@ -92,11 +92,11 @@ export const CompleteCustomerRegistrationResponse = zod.object({
 export const GetCustomerAuthMeResponse = zod.object({
   "customer": zod.union([zod.object({
   "clerkUserId": zod.string(),
-  "phoneNumber": zod.string(),
+  "phoneNumber": zod.string().nullable(),
   "email": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string().nullable(),
-  "phoneVerifiedAt": zod.coerce.date(),
+  "phoneVerifiedAt": zod.coerce.date().nullable(),
   "emailVerifiedAt": zod.coerce.date(),
   "createdAt": zod.coerce.date()
 }),zod.null()]),
@@ -110,11 +110,11 @@ export const GetCustomerAuthMeResponse = zod.object({
 export const GetAdminCustomersResponse = zod.object({
   "customers": zod.array(zod.object({
   "clerkUserId": zod.string(),
-  "phoneNumber": zod.string(),
+  "phoneNumber": zod.string().nullable(),
   "email": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string().nullable(),
-  "phoneVerifiedAt": zod.coerce.date(),
+  "phoneVerifiedAt": zod.coerce.date().nullable(),
   "emailVerifiedAt": zod.coerce.date(),
   "createdAt": zod.coerce.date()
 }).and(zod.object({

@@ -281,13 +281,15 @@ router.post("/auth/phone/check", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/complete", requireCustomer, async (req, res): Promise<void> => {
-  const parsed = CompleteCustomerRegistrationBody.safeParse(req.body);
+  const parsed = CompleteCustomerRegistrationBody.safeParse(req.body ?? {});
   if (!parsed.success) {
-    res.status(400).json({ error: "Finish the verified signup steps before continuing." });
+    res.status(400).json({ error: "Finish email verification and enter your name before continuing." });
     return;
   }
   const clerkUserId = getAuth(req).userId!;
-  const challengeId = digestChallenge(parsed.data.registrationToken);
+  const challengeId = parsed.data.registrationToken
+    ? digestChallenge(parsed.data.registrationToken)
+    : null;
   try {
     const user = await clerkClient.users.getUser(clerkUserId);
     const email = verifiedPrimaryEmail(user);
@@ -295,54 +297,99 @@ router.post("/auth/complete", requireCustomer, async (req, res): Promise<void> =
       res.status(400).json({ error: "Verify your email and enter your name before continuing." });
       return;
     }
-    const [challenge] = await db.select().from(customerPhoneChallenges)
-      .where(eq(customerPhoneChallenges.id, challengeId)).limit(1);
-    const phoneVerifiedAt = challenge?.phoneVerifiedAt;
-    if (!challenge || !phoneVerifiedAt) {
-      res.status(400).json({ error: "Verify your phone number before completing signup." });
-      return;
-    }
-    if (challenge.expiresAt.getTime() <= Date.now()) {
-      res.status(400).json({ error: "Your phone verification has expired. Request a new SMS code to finish signup." });
-      return;
+    if (challengeId) {
+      const [challenge] = await db.select().from(customerPhoneChallenges)
+        .where(eq(customerPhoneChallenges.id, challengeId)).limit(1);
+      if (
+        !challenge ||
+        challenge.status !== "verified" ||
+        !challenge.phoneVerifiedAt ||
+        challenge.consumedAt ||
+        challenge.expiresAt.getTime() <= Date.now()
+      ) {
+        res.status(400).json({ error: "That phone verification has expired. Continue without a phone or verify it again." });
+        return;
+      }
     }
 
     const result = await db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`customer-user:${clerkUserId}`}, 0))`);
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`customer-phone:${challenge.phoneNumber}`}, 0))`);
       const [existingUser] = await tx.select().from(customerProfiles)
         .where(eq(customerProfiles.clerkUserId, clerkUserId)).limit(1);
-      const [existingPhone] = await tx.select().from(customerProfiles)
-        .where(eq(customerProfiles.phoneNumber, challenge.phoneNumber)).limit(1);
-      if (existingUser || existingPhone) {
-        if (existingUser?.phoneNumber === challenge.phoneNumber && existingPhone?.clerkUserId === clerkUserId) {
-          return existingUser;
+
+      let phoneNumber: string | null = null;
+      let phoneVerifiedAt: Date | null = null;
+      let challenge: typeof customerPhoneChallenges.$inferSelect | null = null;
+      if (challengeId) {
+        const [lockedChallenge] = await tx.select().from(customerPhoneChallenges)
+          .where(eq(customerPhoneChallenges.id, challengeId)).for("update").limit(1);
+        if (
+          !lockedChallenge ||
+          lockedChallenge.status !== "verified" ||
+          !lockedChallenge.phoneVerifiedAt ||
+          lockedChallenge.consumedAt ||
+          lockedChallenge.expiresAt.getTime() <= Date.now()
+        ) {
+          return null;
         }
-        return null;
+        challenge = lockedChallenge;
+        phoneNumber = challenge.phoneNumber;
+        phoneVerifiedAt = challenge.phoneVerifiedAt;
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`customer-phone:${phoneNumber}`}, 0))`);
+        const [existingPhone] = await tx.select({ clerkUserId: customerProfiles.clerkUserId })
+          .from(customerProfiles).where(eq(customerProfiles.phoneNumber, phoneNumber)).limit(1);
+        if (existingPhone && existingPhone.clerkUserId !== clerkUserId) return null;
       }
-      if (
-        challenge.status !== "verified" ||
-        challenge.consumedAt ||
-        challenge.expiresAt.getTime() <= Date.now()
-      ) {
-        return null;
+
+      const now = new Date();
+      const firstName = user.firstName!.trim();
+      const lastName = user.lastName?.trim() || null;
+      if (existingUser) {
+        if (
+          challenge &&
+          existingUser.phoneNumber &&
+          existingUser.phoneNumber !== challenge.phoneNumber
+        ) {
+          return null;
+        }
+        const [updated] = await tx.update(customerProfiles)
+          .set({
+            phoneNumber: challenge?.phoneNumber ?? existingUser.phoneNumber,
+            phoneVerifiedAt: challenge?.phoneVerifiedAt ?? existingUser.phoneVerifiedAt,
+            email,
+            firstName,
+            lastName,
+            emailVerifiedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(customerProfiles.clerkUserId, clerkUserId))
+          .returning();
+        if (challenge && challengeId) {
+          await tx.update(customerPhoneChallenges)
+            .set({ status: "consumed", consumedAt: now })
+            .where(eq(customerPhoneChallenges.id, challengeId));
+        }
+        return updated;
       }
+
       const [created] = await tx.insert(customerProfiles).values({
         clerkUserId,
-        phoneNumber: challenge.phoneNumber,
+        phoneNumber,
         email,
-        firstName: user.firstName!.trim(),
-        lastName: user.lastName?.trim() || null,
+        firstName,
+        lastName,
         phoneVerifiedAt,
-        emailVerifiedAt: new Date(),
+        emailVerifiedAt: now,
       }).returning();
-      await tx.update(customerPhoneChallenges)
-        .set({ status: "consumed", consumedAt: new Date() })
-        .where(eq(customerPhoneChallenges.id, challengeId));
+      if (challenge && challengeId) {
+        await tx.update(customerPhoneChallenges)
+          .set({ status: "consumed", consumedAt: now })
+          .where(eq(customerPhoneChallenges.id, challengeId));
+      }
       return created;
     });
     if (!result) {
-      res.status(409).json({ error: "This phone or customer account is already linked." });
+      res.status(409).json({ error: "This phone number is already linked to another customer." });
       return;
     }
     res.json(CompleteCustomerRegistrationResponse.parse(result));
