@@ -8,7 +8,98 @@ import voiceRouter from "../routes/voice";
 import {
   buildPreparedVoiceToken, canonicalWebhookUrl, incomingIdentity, ownedCallerId,
   validVoiceSignature, voiceIdentity, VOICE_TOKEN_TTL_SECONDS,
+  getVoiceReadiness,
 } from "./voice";
+import { prepareIncomingRoute, prepareOutgoingRoute, type ReservedCall } from "./voice-routing";
+
+test("readiness checks settings without exposing credentials or enabling calls", () => {
+  const empty = getVoiceReadiness({});
+  assert.equal(empty.enabled, false);
+  assert(empty.blockers.some(text => text.includes("Android Firebase")));
+  assert(empty.blockers.some(text => text.includes("Voice application")));
+  const configured = getVoiceReadiness({
+    TWILIO_ACCOUNT_SID: `AC${"1".repeat(32)}`,
+    TWILIO_API_KEY_SID: `SK${"2".repeat(32)}`,
+    TWILIO_API_KEY_SECRET: "never-return-this-fixture",
+    TWILIO_AUTH_TOKEN: "private-webhook-fixture",
+    TWILIO_VOICE_APPLICATION_SID: `AP${"3".repeat(32)}`,
+    TWILIO_VOICE_ANDROID_PUSH_CREDENTIAL_SID: `CR${"4".repeat(32)}`,
+    VOICE_WEBHOOK_ORIGIN: "https://voice.example",
+  });
+  assert.equal(configured.enabled, false);
+  assert(!configured.blockers.some(text => text.includes("not configured")));
+  assert(configured.blockers.some(text => text.includes("still need verification")));
+  assert.doesNotMatch(JSON.stringify(configured), /never-return|private-webhook|AC111|SK222|CR444/);
+});
+
+test("prepared routes require ownership and a call-bound unexpired spending reservation", () => {
+  const now = new Date("2026-11-19T12:00:00Z");
+  const assignment = { customerId: "user_alice", phoneNumber: "+12025550123", revokedAt: null };
+  const providerCallSid = `CA${"5".repeat(32)}`;
+  const reservation: ReservedCall = {
+    id: "reservation_fixture",
+    customerId: assignment.customerId,
+    direction: "outgoing",
+    providerCallSid,
+    ownedNumber: assignment.phoneNumber,
+    remoteNumber: "+447700900123",
+    maxSeconds: 120,
+    expiresAt: new Date(now.getTime() + 60_000),
+  };
+  const outgoing = {
+    customerId: assignment.customerId,
+    fromClient: `client:${voiceIdentity(assignment.customerId)}`,
+    ownedNumber: assignment.phoneNumber,
+    destination: reservation.remoteNumber,
+    providerCallSid, assignment, destinationApproved: true, reservation, now,
+  };
+  const connected = prepareOutgoingRoute(outgoing);
+  assert.equal(connected.allowed, true);
+  assert.match(connected.twiml, /callerId="\+12025550123"/);
+  assert.match(connected.twiml, /timeLimit="120"/);
+  assert.match(connected.twiml, /<Number>\+447700900123<\/Number>/);
+  const blocked = [
+    prepareOutgoingRoute({ ...outgoing, customerId: "user_bob" }),
+    prepareOutgoingRoute({ ...outgoing, fromClient: "client:attacker" }),
+    prepareOutgoingRoute({ ...outgoing, assignment: null }),
+    prepareOutgoingRoute({ ...outgoing, assignment: { ...assignment, revokedAt: now } }),
+    prepareOutgoingRoute({ ...outgoing, destination: "<Client>attacker</Client>" }),
+    prepareOutgoingRoute({ ...outgoing, destinationApproved: false }),
+    prepareOutgoingRoute({ ...outgoing, reservation: null }),
+    ...[
+      { customerId: "user_bob" }, { direction: "incoming" as const },
+      { providerCallSid: `CA${"6".repeat(32)}` }, { ownedNumber: "+12025550999" },
+      { remoteNumber: "+447700900999" }, { maxSeconds: 0 }, { maxSeconds: 3601 },
+      { maxSeconds: 1.5 }, { expiresAt: now },
+    ].map(patch => prepareOutgoingRoute({ ...outgoing, reservation: { ...reservation, ...patch } })),
+  ];
+  for (const decision of blocked) {
+    assert.equal(decision.allowed, false);
+    assert.match(decision.twiml, /<Reject/);
+    assert.doesNotMatch(decision.twiml, /<Dial|<Client|<Number/);
+  }
+  const incoming = {
+    ownedNumber: assignment.phoneNumber,
+    remoteNumber: reservation.remoteNumber,
+    providerCallSid, assignment,
+    reservation: { ...reservation, direction: "incoming" as const }, now,
+  };
+  const received = prepareIncomingRoute(incoming);
+  assert.equal(received.allowed, true);
+  assert.match(received.twiml, new RegExp(`<Client>${voiceIdentity(assignment.customerId)}</Client>`));
+  assert.match(received.twiml, /timeLimit="120"/);
+  for (const decision of [
+    prepareIncomingRoute({ ...incoming, assignment: null }),
+    prepareIncomingRoute({ ...incoming, ownedNumber: "+12025550999" }),
+    prepareIncomingRoute({ ...incoming, reservation: null }),
+    prepareIncomingRoute({ ...incoming, reservation }),
+    prepareIncomingRoute({ ...incoming, remoteNumber: "anonymous" }),
+    prepareIncomingRoute({ ...incoming, reservation: { ...incoming.reservation, expiresAt: now } }),
+  ]) {
+    assert.equal(decision.allowed, false);
+    assert.doesNotMatch(decision.twiml, /<Dial|<Client|<Number/);
+  }
+});
 
 test("customer identity and number assignment cannot cross customer boundaries", () => {
   const assignment = { customerId: "user_alice", phoneNumber: "+12025550123", revokedAt: null };

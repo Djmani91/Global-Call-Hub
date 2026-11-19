@@ -4,7 +4,7 @@ import {
   CreateVoiceTokenBody, GetVoiceReadinessResponse, HandleVoiceWebhookBody,
 } from "@workspace/api-zod";
 import {
-  canonicalWebhookUrl, validVoiceSignature, voiceReadiness, VOICE_DISABLED_MESSAGE,
+  canonicalWebhookUrl, validVoiceSignature, getVoiceReadiness, VOICE_DISABLED_MESSAGE,
 } from "../services/voice";
 
 export const requireVoiceCustomer: RequestHandler = (req, res, next) => {
@@ -21,7 +21,7 @@ router.use("/voice", (_req, res, next) => {
   next();
 });
 router.get("/voice/readiness", (_req, res) => {
-  res.json(GetVoiceReadinessResponse.parse(voiceReadiness));
+  res.json(GetVoiceReadinessResponse.parse(getVoiceReadiness()));
 });
 router.post("/voice/token", requireVoiceCustomer, (req, res) => {
   // Reject, rather than silently ignore, identity/caller ID overrides.
